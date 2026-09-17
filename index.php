@@ -154,8 +154,8 @@
 					if( $hd !== 'global' ){
 						if( isset( $deck['enable'] ) && $deck['enable'] == "true"){
 			?>
-							<div name="deck<?php echo $deck['number']; ?>" class="hdcpDeck hdcpDeckBorderlt">
-								<div class="hdcpDblBox left" style="line-height: 37px;">
+							<div name="deck<?php echo $deck['number']; ?>" class="hdcpDeck hdcpDeckBorderlt hdcpDeckTall">
+								<div class="hdcpDblBox left" style="line-height: 37px; height:146px;">
 									<div name="deckname" class="deckname medium">
 										<?php echo $deck['name']; ?>
 									</div>
@@ -164,7 +164,7 @@
 									</div>
 									<div name="status">
 									<?php
-										if ($deck['enable'] == "true" && gettype( ${"hd".$deck['number']} ) == 'resource' && substr(fgets(${"hd".$deck['number']}), 0,3) == "500"){
+										if ($deck['enable'] == "true" && gettype( ${"hd".$deck['number']} ) == 'resource' && ${"online_d".$deck['number']}){
 											echo '<div class="conntrue" title="Deck is online"></div>';
 										}else{
 											echo '<div class="connfalse" title="Deck is not connected"></div>';
@@ -178,48 +178,48 @@
 										}else{
 											echo '<a href="?deck='.$deck['number'].'&cmd=synctrue"><div class="syncfalse" title="Deck is set to solo operation"></div></a>';
 										}
-										//transport status
-										
-										if ( gettype( ${"hd".$deck['number']} ) == 'resource' ) { 
-											fwrite(${"hd".$deck['number']}, $status);
+										//---------------------------------------------------------------
+										//Transport status & timecode - figure out how many single-line
+										//acks (one per sub-command) this deck already has queued from a
+										//command this same page load issued, drain exactly those, then
+										//the deck's next response really is the "transport info" we ask
+										//for. Command variables ($play, $stop, etc.) come from scripts.php.
+										//---------------------------------------------------------------
+										$hdcpSoloCmds = array(
+											'trkbk' => $trkbk, 'rw' => $rw, 'play' => $play, 'ff' => $ff,
+											'trkfw' => $trkfw, 'stop' => $stop, 'rem' => $rem, 'loop' => $loop,
+											'gtc' => $clip, 'gtcp' => $clipAndPlay,
+											'tcj' => ${"deck".$deck['number']."tcj"}, 'rec' => ${"recDeck".$deck['number']},
+										);
+										$hdcpSyncCmds = array(
+											'trkbkall' => $trkbk, 'trkfwall' => $trkfw, 'recall' => ${"recDeck".$deck['number']},
+											'playall' => $play, 'ffall' => $ff, 'rwall' => $rw, 'stopall' => $stop,
+											'tcjall' => $tcjall, 'loopall' => $loop,
+										);
+										$hdcpCmd = isset($_GET['cmd']) ? $_GET['cmd'] : '';
+										$hdcpAckCount = 0;
+										if ($hdcpCmd == 'id' && @$_GET['deck'] == $deck['number']){
+											$hdcpAckCount = substr_count($blink, "\r\n") + substr_count($blinkOff, "\r\n");
+										}elseif (isset($hdcpSoloCmds[$hdcpCmd]) && @$_GET['deck'] == $deck['number']){
+											$hdcpAckCount = substr_count($hdcpSoloCmds[$hdcpCmd], "\r\n");
+										}elseif (isset($hdcpSyncCmds[$hdcpCmd]) && @$_COOKIE["deck".$deck['number']."sync"] == "true"){
+											$hdcpAckCount = substr_count($hdcpSyncCmds[$hdcpCmd], "\r\n");
 										}
-										//sleep(1); //hyperdeck mini is literally too slow to report this in real time, while it does function properly, refresh is required to show for mini
-										if(isset($_GET['cmd']) && $deck['number'] == @$_GET['deck'] || isset($_GET['cmd']) && !isset($_GET['deck'])){
-											if(in_array(@$_GET['cmd'], array('rem','trkfw','trkbk','trkfwall','trkbkall'))){
-												$inc = "8";
-												$add = "7";
-											}elseif(@in_array($_GET['cmd'], array('synctrue','syncfalse'))){			
-												$inc = "7";
-												$add = "-3";
-											}elseif(@in_array($_GET['cmd'], array('id'))){
-												$inc = "8";
-												$add = "-2";
-											}else{
-												$inc = "9";
-												$add = "8";
-											}
-										}else{
-											$inc = "7";
-											$add = "7";
-										}
-										
-										if ( gettype( ${"hd".$deck['number']} ) == 'resource' ) { 
-											${"string_d".$deck['number']} = '';
-											for (${"xd".$deck['number']}=0; ${"xd".$deck['number']}<=$inc;){
-												${"string_d".$deck['number']} .= fgets(${"hd".$deck['number']});
-												${"xd".$deck['number']}++;
-											}
-											${"pos_d".$deck['number']} = strpos(${"string_d".$deck['number']}, $startkey);
-											${"end_d".$deck['number']} = strpos(${"string_d".$deck['number']}, $endkey);
-											${"output_d".$deck['number']} = substr(${"string_d".$deck['number']}, ${"pos_d".$deck['number']}+8, ${"end_d".$deck['number']}-${"pos_d".$deck['number']}-10);
-										} else {
-											${"output_d".$deck['number']} = '';
-										}
+										hdcp_drain_acks(${"hd".$deck['number']}, $hdcpAckCount);
+										${"transport_d".$deck['number']} = hdcp_query(${"hd".$deck['number']}, "transport info");
+										${"output_d".$deck['number']} = isset(${"transport_d".$deck['number']}['status']) ? ${"transport_d".$deck['number']}['status'] : '';
+										${"tc_d".$deck['number']} = isset(${"transport_d".$deck['number']}['display timecode']) ? ${"transport_d".$deck['number']}['display timecode'] : null;
 										//fclose(${"hd".$deck['number']});
 									?>
 									</div>
+									<?php if ( ${"tc_d".$deck['number']} ){ ?>
+									<div class="deckTc">
+										<span class="pill pill-small pill-<?php echo hdcp_transport_class(${"output_d".$deck['number']}); ?>" style="margin-right:8px;"><?php echo ${"output_d".$deck['number']} == 'record' ? 'REC' : htmlspecialchars(${"output_d".$deck['number']}); ?></span>
+										<span class="tcDisplay tcDisplaySmall"><?php echo htmlspecialchars(${"tc_d".$deck['number']}); ?></span>
+									</div>
+									<?php } ?>
 								</div>
-								<div class="hdcpDblBox left">
+								<div class="hdcpDblBox left" style="height:146px;">
 									<div class="hdcpBoxBborder" style="line-height: 26px;margin-top:2px;">
 										Timecode Jump:
 									</div>
@@ -241,42 +241,42 @@
 										<div class="remote"></div>
 									</a>
 								</div>
-								<div class="hdcpBox left">
+								<div class="hdcpBox left" style="height:146px;">
 									<a href="?deck=<?php echo $deck['number']; ?>&cmd=trkbk" title="Previous clip">
 										<div class="hdcpButton trkbk"></div>
 									</a>
 								</div>
-								<div class="hdcpBox left">
+								<div class="hdcpBox left" style="height:146px;">
 									<a href="?deck=<?php echo $deck['number']; ?>&cmd=rw" title="Rewind">
 										<div class="hdcpButton rw<?php if(${"output_d".$deck['number']} == "rewind"){ echo "active";} ?>"></div>
 									</a>
 								</div>
-								<div class="hdcpBox left">
+								<div class="hdcpBox left" style="height:146px;">
 									<a href="?deck=<?php echo $deck['number']; ?>&cmd=play" title="Play">
 										<div class="hdcpButton play<?php if(${"output_d".$deck['number']} == "play"){ echo "active";} ?>"></div>
 									</a>
 								</div>
-								<div class="hdcpBox left">
+								<div class="hdcpBox left" style="height:146px;">
 									<a href="?deck=<?php echo $deck['number']; ?>&cmd=ff" title="Fast Forward">
 										<div class="hdcpButton ff<?php if(${"output_d".$deck['number']} == "forward"){ echo "active";} ?>"></div>
 									</a>
 								</div>
-								<div class="hdcpBox left">
+								<div class="hdcpBox left" style="height:146px;">
 									<a href="?deck=<?php echo $deck['number']; ?>&cmd=trkfw" title="Next clip">
 										<div class="hdcpButton trkfw"></div>
 									</a>
 								</div>
-								<div class="hdcpBox left">
+								<div class="hdcpBox left" style="height:146px;">
 									<a href="?deck=<?php echo $deck['number']; ?>&cmd=stop" title="Stop">
 										<div class="hdcpButton stop<?php if(${"output_d".$deck['number']} == "preview" || ${"output_d".$deck['number']} == "stopped"){ echo "active";} ?>"></div>
 									</a>
 								</div>
-								<div class="hdcpBox left hdcpBoxRborder">
+								<div class="hdcpBox left hdcpBoxRborder" style="height:146px;">
 									<a href="?deck=<?php echo $deck['number']; ?>&cmd=rec" title="Record">
 										<div class="hdcpButtonRec rec<?php if(${"output_d".$deck['number']} == "record"){ echo "active";} ?>"></div>
 									</a>
 								</div>
-								<div class="hdcpBox left">
+								<div class="hdcpBox left" style="height:146px;">
 									<a href="?deck=<?php echo $deck['number']; ?>&cmd=loop" title="Loop play">
 										<div class="hdcpButton loop"></div>
 									</a>
