@@ -247,7 +247,13 @@
 				<form action="?">
 					<input type="hidden" name="cmd" value="format">
 					<div class="left" style="line-height: 116px;padding-left:20px;">
-						<span style="font-size:24px;vertical-align: middle;">Format the active disk in </span>
+						<span style="font-size:24px;vertical-align: middle;">Format </span>
+						<select name="slotid" class="red" style="font-size:24px;vertical-align: middle;border:none;">
+							<option value="">the active slot</option>
+							<option value="1">slot 1</option>
+							<option value="2">slot 2</option>
+						</select>
+						<span style="font-size:24px;vertical-align: middle;"> in </span>
 						<select name="deck" class="red" style="font-size:24px;vertical-align: middle;border:none;">
 							<?php
 								foreach($config as $hd => $deck){
@@ -290,7 +296,8 @@
 					}elseif($_GET['cmd'] == "fmtstd"){
 						echo " format set to ".$_GET['fmtstd']."</div></div>";
 					}elseif($_GET['cmd'] == "format"){
-						echo " media formatted as ".$_GET['formatType']." has ". ( isset($complete) ? $complete : 'encountered an error' ) .".</div></div>";
+						$fmtSlotLabel = ( isset($_GET['slotid']) && $_GET['slotid'] !== '' ) ? " slot ".$_GET['slotid']."'s" : " the active slot's";
+						echo $fmtSlotLabel." media formatted as ".$_GET['formatType']." has ". ( isset($complete) ? $complete : 'encountered an error' ) .".</div></div>";
 					}elseif($_GET['cmd'] == "startup"){
 						if($_GET['startupstate'] == "true"){$pos = "enabled";}else{$pos = "disabled";}
 						echo " play on startup state changed to ".$pos.".</div></div>";
