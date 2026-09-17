@@ -1,5 +1,94 @@
 <?php require_once('config.php');
 
+//---------------------------------------------------------------------------
+// SHARED HELPERS - reading & formatting HyperDeck responses for the info panel
+//---------------------------------------------------------------------------
+
+//Sends a command and parses its response into an associative array of
+//"key: value" fields. HyperDeck multi-line responses end their status
+//line with a colon and are terminated by a blank line; single-line
+//acknowledgements (e.g. "200 ok") have nothing further to read.
+if ( ! function_exists('hdcp_drain_connection_banner') ) {
+	//The deck sends an unsolicited "500 connection info:" message the
+	//instant a client connects, before any command is sent. If it isn't
+	//drained here, it gets mistaken for the response to whichever command
+	//is issued first later on, throwing every subsequent read off by one.
+	function hdcp_drain_connection_banner($bin){
+		if ( ! is_resource($bin) ) { return; }
+		$header = fgets($bin);
+		if ($header === false){ return; }
+		if (strpos(trim($header), '500') === 0){
+			while ( ($line = fgets($bin)) !== false ){
+				if (trim($line) === ''){ break; }
+			}
+		}
+	}
+}
+
+if ( ! function_exists('hdcp_query') ) {
+	function hdcp_query($bin, $command){
+		$data = array();
+		if ( ! is_resource($bin) ) { return $data; }
+		fwrite($bin, $command."\r\n");
+		$header = fgets($bin);
+		if ($header === false){ return $data; }
+		$header = trim($header);
+		$data['__status'] = $header;
+		if (substr($header, -1) !== ':'){ return $data; } //single-line ack, nothing more to read
+		while ( ($line = fgets($bin)) !== false ){
+			$line = trim($line);
+			if ($line === ''){ break; }
+			$parts = explode(':', $line, 2);
+			if (count($parts) == 2){
+				$data[trim($parts[0])] = trim($parts[1]);
+			}
+		}
+		return $data;
+	}
+}
+
+//Human readable helpers used by the info panel
+if ( ! function_exists('hdcp_bytes_to_gb') ) {
+	function hdcp_bytes_to_gb($bytes){
+		if ( ! is_numeric($bytes) ){ return '—'; }
+		return number_format($bytes / 1073741824, 1)." GB";
+	}
+}
+if ( ! function_exists('hdcp_seconds_to_tc') ) {
+	function hdcp_seconds_to_tc($seconds){
+		if ( ! is_numeric($seconds) ){ return '00:00:00'; }
+		return gmdate("H:i:s", intval($seconds));
+	}
+}
+if ( ! function_exists('hdcp_time_class') ) {
+	//colour coding for remaining record time, same 10min/5min thresholds the panel already used
+	function hdcp_time_class($seconds){
+		if ( ! is_numeric($seconds) ){ return 'gray'; }
+		if ($seconds >= 600){ return 'green'; }
+		if ($seconds > 300){ return 'yellow'; }
+		return 'red';
+	}
+}
+if ( ! function_exists('hdcp_slot_class') ) {
+	function hdcp_slot_class($status){
+		switch(strtolower((string)$status)){
+			case 'mounted': return 'green';
+			case 'mounting': return 'yellow';
+			case 'error': return 'red';
+			default: return 'gray'; //empty
+		}
+	}
+}
+if ( ! function_exists('hdcp_transport_class') ) {
+	function hdcp_transport_class($status){
+		switch(strtolower((string)$status)){
+			case 'record': return 'red';
+			case 'play': case 'forward': case 'rewind': case 'jog': case 'shuttle': return 'green';
+			default: return 'gray'; //stopped / preview / unknown
+		}
+	}
+}
+
 //DECK COMMANDS
 $play = "remote: enable: true\r\n play\r\n";					//sends command to play deck
 $stop = "remote: enable: true\r\n stop\r\n";					//sends comand to stop deck
@@ -78,6 +167,7 @@ $tcall = "00:00:00:00";
 		if( $hd !== 'global' ){
 			if($deck['enable'] == "true"){
 				${"hd".$deck['number']} = @fsockopen("tcp://".$deck['ip'], 9993, $errno, $errstr, 2); //Establish Connection
+				hdcp_drain_connection_banner(${"hd".$deck['number']}); //discard the deck's unsolicited "connection info" message
 				if(isset($_COOKIE["deck".$deck['number']."sync"])){
 					
 				}else{
@@ -254,7 +344,10 @@ if ( isset( $_GET['cmd'] ) && isset( $go ) && gettype( $go ) == 'resource' ) {
 //SSD Formatting
 	if( isset( $_GET['cmd'] ) && $_GET['cmd'] == 'format' && isset( $go ) && gettype( $go ) == 'resource' ){
 		$fmt = $_GET['formatType'];
-		$prepToken = "format: prepare: ".$fmt."\r\n";
+		//Target a specific card/slot when one was chosen; otherwise fall back
+		//to the deck's currently active slot (the original behaviour)
+		$fmtSlotId = ( isset($_GET['slotid']) && $_GET['slotid'] !== '' ) ? intval($_GET['slotid']) : null;
+		$prepToken = "format: ".( $fmtSlotId ? "slot id: ".$fmtSlotId." " : "" )."prepare: ".$fmt."\r\n";
 		$key = "ready";
 		$getToken = '';
 		$result = '';
