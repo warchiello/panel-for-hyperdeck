@@ -513,6 +513,81 @@ background-position: 0px 0px;
     border-radius: 6px;
 }
 
+/* INFO PANEL (deck status page) */
+.statCard{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:36px;
+    height:116px;
+    padding-left:20px;
+    box-sizing:border-box;
+}
+
+.statGroup{
+    min-width:130px;
+}
+
+.statLabel{
+    font-size:12px;
+    color:#8a8a86;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    margin-bottom:6px;
+}
+
+.statValue{
+    font-size:22px;
+    color:#e2e1dd;
+}
+
+.statValue-green{ color:#45D40C; }
+.statValue-yellow{ color:#f5d442; }
+.statValue-red{ color:#ff5c5c; }
+.statValue-gray{ color:#e2e1dd; }
+
+.tcDisplay{
+    font-family: 'Courier New', Courier, monospace;
+    font-size:30px;
+    letter-spacing:2px;
+    color:#e2e1dd;
+}
+
+.pill{
+    display:inline-block;
+    padding:5px 14px;
+    border-radius:20px;
+    font-weight:700;
+    font-size:15px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    white-space:nowrap;
+}
+
+.pill-green{ background:#193a1a; color:#45D40C; }
+.pill-red{ background:#3d1a1a; color:#ff5c5c; }
+.pill-yellow{ background:#3d3717; color:#f5d442; }
+.pill-gray{ background:#2c2c2c; color:#b3b3b0; }
+
+.remainBar{
+    background:#141414;
+    border-radius:6px;
+    height:6px;
+    width:150px;
+    overflow:hidden;
+    margin-top:8px;
+}
+
+.remainBarFill{
+    height:6px;
+    border-radius:6px;
+}
+
+.remainBarFill-green{ background:#45D40C; }
+.remainBarFill-yellow{ background:#f5d442; }
+.remainBarFill-red{ background:#ff5c5c; }
+.remainBarFill-gray{ background:#555; }
+
 .reporting{
     width:1024px;
     height:100px;
