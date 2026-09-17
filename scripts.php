@@ -187,7 +187,10 @@ $tcall = "00:00:00:00";
 	foreach($config as $hd => $deck){
 		if( $hd !== 'global' ){
 			if($deck['enable'] == "true"){
-				${"hd".$deck['number']} = @fsockopen("tcp://".$deck['ip'], 9993, $errno, $errstr, 2); //Establish Connection
+				${"hd".$deck['number']} = @fsockopen("tcp://".$deck['ip'], 9993, $errno, $errstr, 1); //Establish Connection (short connect timeout - fail fast on unreachable/non-existent decks)
+				if ( is_resource(${"hd".$deck['number']}) ) {
+					stream_set_timeout(${"hd".$deck['number']}, 1); //cap every read on this socket, so something that accepts the TCP connection but never speaks the HyperDeck protocol can't hang the page waiting on fgets()
+				}
 				${"online_d".$deck['number']} = hdcp_drain_connection_banner(${"hd".$deck['number']}); //discard the deck's unsolicited "connection info" message, remembering whether it actually greeted us
 				if(isset($_COOKIE["deck".$deck['number']."sync"])){
 					
