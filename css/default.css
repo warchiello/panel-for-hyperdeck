@@ -513,6 +513,31 @@ background-position: 0px 0px;
     border-radius: 6px;
 }
 
+/* Deck rows on the main control panel get a little extra height to fit
+   the live timecode line without overflowing the fixed-height columns. */
+.hdcpDeckTall{
+    height:150px;
+}
+
+.deckTc{
+    clear:left;
+    line-height:20px;
+    padding-top:2px;
+}
+
+/* Combined selectors (rather than relying on source order) so these
+   modifiers always win over the base .tcDisplay/.pill rules below,
+   regardless of where either block sits in the file. */
+.tcDisplay.tcDisplaySmall{
+    font-size:14px;
+    letter-spacing:0.5px;
+    white-space:nowrap;
+}
+
+.pill.pill-small{
+    padding:2px 6px;
+    font-size:11px;
+}
 /* INFO PANEL (deck status page) */
 .statCard{
     display:flex;
