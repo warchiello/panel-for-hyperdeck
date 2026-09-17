@@ -205,10 +205,18 @@
 										}elseif (isset($hdcpSyncCmds[$hdcpCmd]) && @$_COOKIE["deck".$deck['number']."sync"] == "true"){
 											$hdcpAckCount = substr_count($hdcpSyncCmds[$hdcpCmd], "\r\n");
 										}
-										hdcp_drain_acks(${"hd".$deck['number']}, $hdcpAckCount);
-										${"transport_d".$deck['number']} = hdcp_query(${"hd".$deck['number']}, "transport info");
-										${"output_d".$deck['number']} = isset(${"transport_d".$deck['number']}['status']) ? ${"transport_d".$deck['number']}['status'] : '';
-										${"tc_d".$deck['number']} = isset(${"transport_d".$deck['number']}['display timecode']) ? ${"transport_d".$deck['number']}['display timecode'] : null;
+										//Only bother querying a deck that actually greeted us with the real
+										//HyperDeck connection banner - anything else is not live hardware,
+										//and asking it "transport info" would just be a wasted round trip.
+										if ( ${"online_d".$deck['number']} ){
+											hdcp_drain_acks(${"hd".$deck['number']}, $hdcpAckCount);
+											${"transport_d".$deck['number']} = hdcp_query(${"hd".$deck['number']}, "transport info");
+											${"output_d".$deck['number']} = isset(${"transport_d".$deck['number']}['status']) ? ${"transport_d".$deck['number']}['status'] : '';
+											${"tc_d".$deck['number']} = isset(${"transport_d".$deck['number']}['display timecode']) ? ${"transport_d".$deck['number']}['display timecode'] : null;
+										}else{
+											${"output_d".$deck['number']} = '';
+											${"tc_d".$deck['number']} = null;
+										}
 										//fclose(${"hd".$deck['number']});
 									?>
 									</div>
