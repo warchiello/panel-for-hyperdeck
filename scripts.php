@@ -13,14 +13,35 @@ if ( ! function_exists('hdcp_drain_connection_banner') ) {
 	//instant a client connects, before any command is sent. If it isn't
 	//drained here, it gets mistaken for the response to whichever command
 	//is issued first later on, throwing every subsequent read off by one.
+	//Returns true when the deck actually greeted us (i.e. it's online),
+	//false otherwise, so callers don't need to re-read the banner themselves
+	//just to find out whether the connection is live.
 	function hdcp_drain_connection_banner($bin){
-		if ( ! is_resource($bin) ) { return; }
+		if ( ! is_resource($bin) ) { return false; }
 		$header = fgets($bin);
-		if ($header === false){ return; }
-		if (strpos(trim($header), '500') === 0){
+		if ($header === false){ return false; }
+		$isBanner = (strpos(trim($header), '500') === 0);
+		if ($isBanner){
 			while ( ($line = fgets($bin)) !== false ){
 				if (trim($line) === ''){ break; }
 			}
+		}
+		return $isBanner;
+	}
+}
+
+if ( ! function_exists('hdcp_drain_acks') ) {
+	//Every command sent to the deck (play, stop, rec, a slot select, ...)
+	//gets back exactly one single-line "200 ok" per sub-command. If this
+	//page already sent one or more commands to a deck earlier in the same
+	//request, those acks are still sitting unread in the socket ahead of
+	//whatever we ask for next - drain exactly that many lines first so a
+	//later query (like "transport info") reads its own response instead
+	//of someone else's leftover ack.
+	function hdcp_drain_acks($bin, $count){
+		if ( ! is_resource($bin) || $count <= 0 ) { return; }
+		for ($i = 0; $i < $count; $i++){
+			if (fgets($bin) === false){ break; }
 		}
 	}
 }
@@ -167,7 +188,7 @@ $tcall = "00:00:00:00";
 		if( $hd !== 'global' ){
 			if($deck['enable'] == "true"){
 				${"hd".$deck['number']} = @fsockopen("tcp://".$deck['ip'], 9993, $errno, $errstr, 2); //Establish Connection
-				hdcp_drain_connection_banner(${"hd".$deck['number']}); //discard the deck's unsolicited "connection info" message
+				${"online_d".$deck['number']} = hdcp_drain_connection_banner(${"hd".$deck['number']}); //discard the deck's unsolicited "connection info" message, remembering whether it actually greeted us
 				if(isset($_COOKIE["deck".$deck['number']."sync"])){
 					
 				}else{
