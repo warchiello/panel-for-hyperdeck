@@ -128,6 +128,40 @@ if ( ! function_exists('hdcp_fps_from_format') ) {
 		return 30;
 	}
 }
+if ( ! function_exists('hdcp_deck_snapshot') ) {
+	//Read-only status query (transport + active slot), no commands sent -
+	//safe to call on an already-established connection at any point, since
+	//it never writes anything that would need an ack drained later. Shared
+	//by the status board and the live-status polling endpoint so both
+	//report the exact same fields the same way.
+	function hdcp_deck_snapshot($bin){
+		$data = array(
+			'online' => false, 'output' => '', 'tc' => null, 'tcDir' => '', 'fps' => 30,
+			'slotId' => null, 'slotRemain' => null, 'slotTotal' => null,
+		);
+		if ( ! is_resource($bin) ) { return $data; }
+		$data['online'] = true;
+		$transport = hdcp_query($bin, "transport info");
+		$data['output'] = isset($transport['status']) ? $transport['status'] : '';
+		$data['tc'] = isset($transport['display timecode']) ? $transport['display timecode'] : null;
+		$data['fps'] = isset($transport['video format']) ? hdcp_fps_from_format($transport['video format']) : 30;
+		if ($data['output'] == 'record' || $data['output'] == 'play' || $data['output'] == 'forward'){
+			$data['tcDir'] = 'fwd';
+		}elseif ($data['output'] == 'rewind'){
+			$data['tcDir'] = 'rev';
+		}
+		$activeSlot = isset($transport['slot id']) ? $transport['slot id'] : '';
+		if ($activeSlot !== '' && $activeSlot !== 'none'){
+			$slotInfo = hdcp_query($bin, "slot info: slot id: ".$activeSlot);
+			if (isset($slotInfo['status']) && $slotInfo['status'] !== 'empty'){
+				$data['slotId'] = $activeSlot;
+				$data['slotRemain'] = isset($slotInfo['recording time']) ? intval($slotInfo['recording time']) : null;
+				$data['slotTotal'] = isset($slotInfo['total size']) ? floatval($slotInfo['total size']) : null;
+			}
+		}
+		return $data;
+	}
+}
 
 //DECK COMMANDS
 $play = "remote: enable: true\r\n play\r\n";					//sends command to play deck
