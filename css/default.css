@@ -159,7 +159,7 @@ height: 80px;
 
 .hdcpInterface {
 margin:auto;
-width:1024px;
+width:1094px;
 }
 
 .hdcpHeader {
@@ -176,7 +176,7 @@ border-top: 1px solid #41423c;
 }
 
 .hdcpDeck {
-width:1024px;
+width:1094px;
 height:120px;
 clear:both;
 }
@@ -518,6 +518,16 @@ background-position: 0px 0px;
    overflowing the fixed-height columns. */
 .hdcpDeckTall{
     height:172px;
+}
+
+/* The first column on a tall deck row also carries the live timecode
+   and active-slot/remaining-time lines now, and "STOPPED 00:00:00:00"
+   or "SLOT 1 · 00:00:00 LEFT OF 999GB" don't fit in the standard
+   160px .hdcpDblBox - widen just this column (the .hdcpDeck/.hdcpInterface
+   widths below are bumped by the same 70px so nothing else has to
+   shrink or wrap). */
+.hdcpDblBox.deckInfoBox{
+    width:230px;
 }
 
 .deckTc{
