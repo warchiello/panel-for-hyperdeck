@@ -154,10 +154,10 @@
 					if( $hd !== 'global' ){
 						if( isset( $deck['enable'] ) && $deck['enable'] == "true"){
 			?>
-							<div name="deck<?php echo $deck['number']; ?>" class="hdcpDeck hdcpDeckBorderlt hdcpDeckTall">
+							<div name="deck<?php echo $deck['number']; ?>" class="hdcpDeck hdcpDeckBorderlt hdcpDeckTall skin-<?php echo hdcp_model_class($deck['model']); ?>">
 								<div class="hdcpDblBox left" style="line-height: 37px; height:146px;">
 									<div name="deckname" class="deckname medium">
-										<?php echo $deck['name']; ?>
+										<?php echo $deck['name']; ?><span class="modelBadge"><?php echo hdcp_model_label($deck['model']); ?></span>
 									</div>
 									<div name="ipaddress">
 										<span style="<?php if ( empty( ${"hd".$deck['number']} ) ) { echo 'color:red;'; } else { echo 'color:#45D40C;'; } ?>"><?php echo $deck['ip']; ?><?php if ( empty( ${"hd".$deck['number']} ) ) { ?> <i class="fa fa-exclamation-circle fa-fw" style="color:red;" title="Connection error"></i><?php } ?></span>
@@ -223,7 +223,7 @@
 									<?php if ( ${"tc_d".$deck['number']} ){ ?>
 									<div class="deckTc">
 										<span class="pill pill-small pill-<?php echo hdcp_transport_class(${"output_d".$deck['number']}); ?>" style="margin-right:8px;"><?php echo ${"output_d".$deck['number']} == 'record' ? 'REC' : htmlspecialchars(${"output_d".$deck['number']}); ?></span>
-										<span class="tcDisplay tcDisplaySmall"><?php echo htmlspecialchars(${"tc_d".$deck['number']}); ?></span>
+										<span class="lcdScreen"><span class="tcDisplay tcDisplaySmall"><?php echo htmlspecialchars(${"tc_d".$deck['number']}); ?></span></span>
 									</div>
 									<?php } ?>
 								</div>
