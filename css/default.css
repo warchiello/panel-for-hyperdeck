@@ -523,8 +523,6 @@ background-position: 0px 0px;
     clear:left;
     line-height:20px;
     padding-top:2px;
-    white-space:nowrap; /*keep the status pill + LCD screen on one line - this column
-        has a fixed height, so wrapping onto a second line would overflow it*/
 }
 
 /* Combined selectors (rather than relying on source order) so these
@@ -869,90 +867,14 @@ animation: scroll-left-auto 10s linear infinite;
 100% { -webkit-transform: translateX(-100%); }
 }
 @keyframes scroll-left-auto {
-0% {
+0% { 
 -moz-transform: translateX(0%); /* Browser bug fix */
 -webkit-transform: translateX(0%); /* Browser bug fix */
-transform: translateX(0%);
+transform: translateX(0%); 
 }
-100% {
+100% { 
 -moz-transform: translateX(-100%); /* Browser bug fix */
 -webkit-transform: translateX(-100%); /* Browser bug fix */
-transform: translateX(-100%);
+transform: translateX(-100%); 
 }
-}
-
-/* ---------------------------------------------------------------------
-   DECK MODEL SKINS (main control panel)
-   Each deck row picks up a skin-<model> class from its configured model
-   (see hdcp_model_class() in scripts.php). Every skin just sets a couple
-   of custom properties - the actual look (accent stripe, badge color,
-   button glow, LCD tint) is defined once below and reads var(--accent),
-   so adding a 5th model later is a one-line addition, not new rules.
---------------------------------------------------------------------- */
-.skin-mini{   --accent:#ffb454; --accent-soft:rgba(255,180,84,0.45); }
-.skin-studio{ --accent:#5ac8fa; --accent-soft:rgba(90,200,250,0.45); }
-.skin-12g{    --accent:#9b7bff; --accent-soft:rgba(155,123,255,0.45); }
-.skin-pro{    --accent:#ffd166; --accent-soft:rgba(255,209,102,0.45); }
-.skin-default{ --accent:#8a8a86; --accent-soft:rgba(138,138,134,0.45); }
-
-.hdcpDeck[class*="skin-"]{
-    position:relative;
-    background:linear-gradient(180deg, rgba(255,255,255,0.025), rgba(0,0,0,0.1));
-    border-left:3px solid var(--accent);
-    transition:border-color 0.2s ease;
-}
-
-/* Positioned absolutely (a corner badge, like a model plate on real gear)
-   rather than inline after the deck name - so a longer model name like
-   "STUDIO" can never wrap the name column onto a second line and throw
-   off that row's fixed-height layout. */
-.modelBadge{
-    position:absolute;
-    top:8px;
-    right:12px;
-    padding:1px 7px;
-    font-size:10px;
-    font-weight:700;
-    letter-spacing:0.5px;
-    border-radius:3px;
-    color:#181818;
-    background-color:var(--accent, #8a8a86);
-}
-
-/* Light-up transport buttons - layered on top of the existing sprite
-   swap, so the physical "pressed" art is untouched, it just glows too. */
-.hdcpDeck .playactive,
-.hdcpDeck .ffactive,
-.hdcpDeck .rwactive{
-    box-shadow:0 0 16px 4px var(--accent-soft, rgba(90,200,250,0.45));
-    border-radius:50%;
-}
-.hdcpDeck .stopactive{
-    box-shadow:0 0 10px 2px rgba(255,255,255,0.25);
-    border-radius:50%;
-}
-/* Record always glows red, regardless of skin - a red tally light is a
-   universal broadcast convention and shouldn't vary by deck model. */
-.hdcpDeck .recactive{
-    box-shadow:0 0 12px 3px rgba(255,59,48,0.45);
-    border-radius:50%;
-    animation:hdcpRecPulse 1.4s ease-in-out infinite;
-}
-@keyframes hdcpRecPulse{
-    0%, 100% { box-shadow:0 0 12px 3px rgba(255,59,48,0.45); }
-    50%      { box-shadow:0 0 22px 7px rgba(255,59,48,0.8); }
-}
-
-/* LCD-style recessed screen for the live timecode readout */
-.lcdScreen{
-    display:inline-block;
-    background:#0a0d0a;
-    border:1px solid #222;
-    border-radius:4px;
-    padding:2px 4px;
-    box-shadow:inset 0 0 7px rgba(0,0,0,0.85);
-}
-.lcdScreen .tcDisplay{
-    color:var(--accent, #4CE666);
-    text-shadow:0 0 6px var(--accent-soft, rgba(76,230,102,0.6));
 }
