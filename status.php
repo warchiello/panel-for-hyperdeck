@@ -22,7 +22,7 @@ if (is_numeric($refresh) && $refresh > 0){ header("Refresh:$refresh"); }
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<meta name="apple-mobile-web-app-status-bar-style" content="default">
 		<link rel="apple-touch-icon" href="images/hdcpIcon.png">
-		<title>HyperDeck Status Board</title>
+		<title>VMPDeck Status Board</title>
 		<link rel="stylesheet" type="text/css" href="css/default.css" media="screen" />
 		<link rel="icon" type="image/png" href="images/hdcpIcon.png">
 		<link rel="stylesheet" href="assets/css/font-awesome.min.css">
@@ -108,7 +108,7 @@ if (is_numeric($refresh) && $refresh > 0){ header("Refresh:$refresh"); }
 			<div class="hdcpHeader">
 				<a href="" onclick="location.reload();return false;">
 					<?php if($enable_avatar == "true"){ echo '<img class="avatar left" src="'.$avatar.'">';} ?>
-					<div class="left large"><span class="bold large">HyperDeck</span> Status Board</div>
+					<div class="left large"><span class="bold large">VMPDeck</span> Status Board</div>
 				</a>
 				<?php
 					if($enable_login == "true"){
