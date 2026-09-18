@@ -94,6 +94,7 @@
 						<div class="hdcpButton loop"></div>
 					</a>
 				</div>
+			</div>
 		<!--SYNC END-->
 		<!--CUSTOM FILE NAMING-->
 			<?php
