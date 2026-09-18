@@ -74,7 +74,6 @@ if (is_numeric($refresh) && $refresh > 0){ header("Refresh:$refresh"); }
 				margin-bottom:14px;
 			}
 			.statusCard .statusTc{
-				font-family:monospace;
 				font-size:34px;
 				letter-spacing:1px;
 				margin:10px 0 14px 0;
