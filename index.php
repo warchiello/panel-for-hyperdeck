@@ -154,20 +154,20 @@
 					if( $hd !== 'global' ){
 						if( isset( $deck['enable'] ) && $deck['enable'] == "true"){
 			?>
-							<div name="deck<?php echo $deck['number']; ?>" class="hdcpDeck hdcpDeckBorderlt hdcpDeckTall">
-								<div class="hdcpDblBox deckInfoBox left" style="line-height: 37px; height:172px;">
+							<div name="deck<?php echo $deck['number']; ?>" class="hdcpDeck hdcpDeckBorderlt hdcpDeckTall" data-hdcp-deck="<?php echo htmlspecialchars($deck['number']); ?>">
+								<div class="hdcpDblBox left" style="line-height: 37px; height:172px;">
 									<div name="deckname" class="deckname medium">
 										<?php echo $deck['name']; ?>
 									</div>
 									<div name="ipaddress">
-										<span style="<?php if ( empty( ${"hd".$deck['number']} ) ) { echo 'color:red;'; } else { echo 'color:#45D40C;'; } ?>"><?php echo $deck['ip']; ?><?php if ( empty( ${"hd".$deck['number']} ) ) { ?> <i class="fa fa-exclamation-circle fa-fw" style="color:red;" title="Connection error"></i><?php } ?></span>
+										<span data-hdcp-ip-status style="<?php if ( empty( ${"hd".$deck['number']} ) ) { echo 'color:red;'; } else { echo 'color:#45D40C;'; } ?>"><?php echo $deck['ip']; ?><?php if ( empty( ${"hd".$deck['number']} ) ) { ?> <i class="fa fa-exclamation-circle fa-fw" data-hdcp-ip-error style="color:red;" title="Connection error"></i><?php } ?></span>
 									</div>
 									<div name="status">
 									<?php
 										if ($deck['enable'] == "true" && gettype( ${"hd".$deck['number']} ) == 'resource' && ${"online_d".$deck['number']}){
-											echo '<div class="conntrue" title="Deck is online"></div>';
+											echo '<div class="conntrue" data-hdcp-conn-dot title="Deck is online"></div>';
 										}else{
-											echo '<div class="connfalse" title="Deck is not connected"></div>';
+											echo '<div class="connfalse" data-hdcp-conn-dot title="Deck is not connected"></div>';
 										}
 										if (@$_GET["cmd"] == "syncfalse" && $_GET["deck"] == $deck['number']){
 											echo '<a href="?deck='.$deck['number'].'&cmd=synctrue"><div class="syncfalse" title="Deck is set to solo operation"></div></a>';
@@ -244,11 +244,13 @@
 										//fclose(${"hd".$deck['number']});
 									?>
 									</div>
-									<?php if ( ${"tc_d".$deck['number']} ){
+									</div>
+								<div class="hdcpDblBox deckInfoBox left" style="height:172px;">
+									<?php
 										//Which way (if any) this deck's timecode is currently moving, so
 										//the client-side ticker below can keep the on-screen number live
-										//between page loads instead of it just sitting frozen at whatever
-										//it read on the last request.
+										//between page loads (and between live-status polls) instead of it
+										//just sitting frozen at whatever it read on the last request.
 										$hdcpTcDir = '';
 										if (${"output_d".$deck['number']} == 'record' || ${"output_d".$deck['number']} == 'play' || ${"output_d".$deck['number']} == 'forward'){
 											$hdcpTcDir = 'fwd';
@@ -256,35 +258,21 @@
 											$hdcpTcDir = 'rev';
 										}
 										$hdcpTcFps = isset(${"transport_d".$deck['number']}['video format']) ? hdcp_fps_from_format(${"transport_d".$deck['number']}['video format']) : 30;
+										//Both blocks below are always in the markup (like the status
+										//board) rather than conditionally included/excluded, so the
+										//live-status poll can just show/hide and update them in place
+										//instead of needing to inject brand-new elements when a deck
+										//that had no transport data suddenly gets some.
+										$hdcpSlotTitle = ${"slottotal_d".$deck['number']} !== null ? ' title="Total capacity: '.htmlspecialchars(hdcp_bytes_to_gb(${"slottotal_d".$deck['number']})).'"' : '';
 									?>
-									<div class="deckTc">
-										<span class="pill pill-small pill-<?php echo hdcp_transport_class(${"output_d".$deck['number']}); ?>" style="margin-right:8px;"><?php echo ${"output_d".$deck['number']} == 'record' ? 'REC' : htmlspecialchars(${"output_d".$deck['number']}); ?></span>
-										<span class="tcDisplay tcDisplaySmall" data-hdcp-live-tc<?php echo $hdcpTcDir ? ' data-hdcp-dir="'.$hdcpTcDir.'" data-hdcp-fps="'.htmlspecialchars($hdcpTcFps).'"' : ''; ?>><?php echo htmlspecialchars(${"tc_d".$deck['number']}); ?></span>
+									<div class="deckTc" data-hdcp-status-pill-wrap style="<?php echo ${"tc_d".$deck['number']} ? '' : 'display:none;'; ?>">
+										<span class="pill pill-small pill-<?php echo hdcp_transport_class(${"output_d".$deck['number']}); ?>" data-hdcp-status-pill style="margin-right:8px;"><?php echo ${"output_d".$deck['number']} == 'record' ? 'REC' : htmlspecialchars(${"output_d".$deck['number']}); ?></span>
+										<span class="tcDisplay tcDisplaySmall" data-hdcp-live-tc data-hdcp-status-tc data-hdcp-dir="<?php echo $hdcpTcDir; ?>" data-hdcp-fps="<?php echo htmlspecialchars($hdcpTcFps); ?>"><?php echo htmlspecialchars(${"tc_d".$deck['number']}); ?></span>
 									</div>
-									<?php } ?>
-									<?php if ( ${"slotid_d".$deck['number']} !== null ){ ?>
-									<div class="deckSlot">
-										<?php
-											//Total capacity is unbounded text (could be a handful of
-											//digits or a lot, depending on the media), so it goes in
-											//a hover tooltip instead of the always-visible pill text -
-											//keeps this column's width predictable instead of chasing
-											//whatever the longest possible "of X GB" string could be.
-											$hdcpSlotTitle = ${"slottotal_d".$deck['number']} !== null ? ' title="Total capacity: '.htmlspecialchars(hdcp_bytes_to_gb(${"slottotal_d".$deck['number']})).'"' : '';
-										?>
-										<span class="pill pill-small pill-<?php echo hdcp_time_class(${"slotremain_d".$deck['number']}); ?>"<?php echo $hdcpSlotTitle; ?>>Slot <?php echo htmlspecialchars(${"slotid_d".$deck['number']}); ?> &middot; <span data-hdcp-live-remain<?php echo (${"output_d".$deck['number']} == 'record' && ${"slotremain_d".$deck['number']} !== null) ? ' data-hdcp-seconds="'.intval(${"slotremain_d".$deck['number']}).'"' : ''; ?>><?php echo hdcp_seconds_to_tc(${"slotremain_d".$deck['number']}); ?></span> left</span>
+									<div class="deckSlot" data-hdcp-status-slot-block style="<?php echo ${"slotid_d".$deck['number']} !== null ? '' : 'display:none;'; ?>">
+										<span class="pill pill-small pill-<?php echo hdcp_time_class(${"slotremain_d".$deck['number']}); ?>" data-hdcp-status-slot-pill<?php echo $hdcpSlotTitle; ?>>Slot <span data-hdcp-status-slot-id><?php echo htmlspecialchars(${"slotid_d".$deck['number']}); ?></span> &middot; <span data-hdcp-live-remain<?php echo (${"output_d".$deck['number']} == 'record' && ${"slotremain_d".$deck['number']} !== null) ? ' data-hdcp-seconds="'.intval(${"slotremain_d".$deck['number']}).'"' : ''; ?>><?php echo hdcp_seconds_to_tc(${"slotremain_d".$deck['number']}); ?></span> left</span>
 									</div>
-									<?php } ?>
-									</div>
-								<div class="hdcpDblBox left" style="height:172px;">
-									<div class="hdcpBoxBborder" style="line-height: 26px;margin-top:2px;">
-										Timecode Jump:
-									</div>
-									<div class="" style="line-height: 26px;">
-										<form action="?deck=<?php echo $deck['number']; ?>&cmd=tcj" method="post" class="tcform">
-											<input type="text" name="timecode<?php echo $deck['number']; ?>" value="<?php echo ${"deck".$deck['number']."tc"}; ?>">
-										</form>
-									</div>
+									<div class="deckTc" data-hdcp-status-empty style="<?php echo ( ! ${"tc_d".$deck['number']} && ${"slotid_d".$deck['number']} === null ) ? '' : 'display:none;'; ?> color:#8a8a86;">No transport data</div>
 									<a href="clipbin.php?deck=<?php echo $deck['number']; ?>" title="Deck clip bin">
 										<div class="clipbin"></div>
 									</a>
@@ -305,17 +293,17 @@
 								</div>
 								<div class="hdcpBox left" style="height:172px;">
 									<a href="?deck=<?php echo $deck['number']; ?>&cmd=rw" title="Rewind">
-										<div class="hdcpButton rw<?php if(${"output_d".$deck['number']} == "rewind"){ echo "active";} ?>"></div>
+										<div class="hdcpButton rw<?php if(${"output_d".$deck['number']} == "rewind"){ echo "active";} ?>" data-hdcp-btn="rw"></div>
 									</a>
 								</div>
 								<div class="hdcpBox left" style="height:172px;">
 									<a href="?deck=<?php echo $deck['number']; ?>&cmd=play" title="Play">
-										<div class="hdcpButton play<?php if(${"output_d".$deck['number']} == "play"){ echo "active";} ?>"></div>
+										<div class="hdcpButton play<?php if(${"output_d".$deck['number']} == "play"){ echo "active";} ?>" data-hdcp-btn="play"></div>
 									</a>
 								</div>
 								<div class="hdcpBox left" style="height:172px;">
 									<a href="?deck=<?php echo $deck['number']; ?>&cmd=ff" title="Fast Forward">
-										<div class="hdcpButton ff<?php if(${"output_d".$deck['number']} == "forward"){ echo "active";} ?>"></div>
+										<div class="hdcpButton ff<?php if(${"output_d".$deck['number']} == "forward"){ echo "active";} ?>" data-hdcp-btn="ff"></div>
 									</a>
 								</div>
 								<div class="hdcpBox left" style="height:172px;">
@@ -325,12 +313,12 @@
 								</div>
 								<div class="hdcpBox left" style="height:172px;">
 									<a href="?deck=<?php echo $deck['number']; ?>&cmd=stop" title="Stop">
-										<div class="hdcpButton stop<?php if(${"output_d".$deck['number']} == "preview" || ${"output_d".$deck['number']} == "stopped"){ echo "active";} ?>"></div>
+										<div class="hdcpButton stop<?php if(${"output_d".$deck['number']} == "preview" || ${"output_d".$deck['number']} == "stopped"){ echo "active";} ?>" data-hdcp-btn="stop"></div>
 									</a>
 								</div>
 								<div class="hdcpBox left hdcpBoxRborder" style="height:172px;">
 									<a href="?deck=<?php echo $deck['number']; ?>&cmd=rec" title="Record">
-										<div class="hdcpButtonRec rec<?php if(${"output_d".$deck['number']} == "record"){ echo "active";} ?>"></div>
+										<div class="hdcpButtonRec rec<?php if(${"output_d".$deck['number']} == "record"){ echo "active";} ?>" data-hdcp-btn="rec"></div>
 									</a>
 								</div>
 								<div class="hdcpBox left" style="height:172px;">
@@ -350,12 +338,6 @@
 			</div>
 		</div>
 		<script>
-		// Purely cosmetic client-side ticker: keeps the timecode and
-		// remaining-record-time numbers rolling over between real page
-		// loads, so the panel doesn't look frozen for the ~seconds
-		// between refreshes. It never talks back to the decks - every
-		// button press or page load re-syncs these to the real values
-		// read from hardware, so any drift here is harmless and short-lived.
 		(function(){
 			function pad(n, len){
 				n = String(Math.max(0, Math.floor(n)));
@@ -363,6 +345,17 @@
 				return n;
 			}
 
+			//---------------------------------------------------------------
+			//Purely cosmetic tickers: keep the timecode and remaining-record
+			//-time numbers rolling over between live-status polls, so the
+			//panel doesn't look frozen for the few seconds between them.
+			//They never talk back to the decks, and they read their current
+			//state (dir/fps/seconds) fresh off each element's attributes
+			//every tick - poll() below only ever has to update those
+			//attributes, it never needs to touch these loops directly, and
+			//a deck that starts/stops moving or comes on/offline is picked
+			//up automatically on the next tick.
+			//---------------------------------------------------------------
 			function tickRemaining(){
 				var els = document.querySelectorAll('[data-hdcp-live-remain][data-hdcp-seconds]');
 				for (var i = 0; i < els.length; i++){
@@ -378,37 +371,151 @@
 				}
 			}
 
-			// Timecode elements can each be running at a different frame
-			// rate, so give each one its own interval timed to 1000/fps
-			// instead of forcing every deck onto a single shared tick.
-			var tcEls = document.querySelectorAll('[data-hdcp-live-tc][data-hdcp-dir]');
-			for (var i = 0; i < tcEls.length; i++){
-				(function(el){
+			var hdcpTcCarry = new WeakMap();
+			var hdcpLastTcTick = Date.now();
+			function tickTc(){
+				var now = Date.now();
+				var elapsedMs = now - hdcpLastTcTick;
+				hdcpLastTcTick = now;
+				var els = document.querySelectorAll('[data-hdcp-live-tc]');
+				for (var i = 0; i < els.length; i++){
+					var el = els[i];
+					var dir = el.getAttribute('data-hdcp-dir');
+					if ( ! dir ){ continue; } //stopped/paused/offline - nothing to advance
 					var fps = parseFloat(el.getAttribute('data-hdcp-fps')) || 30;
-					var intervalMs = 1000 / fps;
-					setInterval(function(){
-						var dir = el.getAttribute('data-hdcp-dir');
-						var parts = el.textContent.split(':');
-						if (parts.length !== 4){ return; }
-						var hh = parseInt(parts[0], 10) || 0;
-						var mm = parseInt(parts[1], 10) || 0;
-						var ss = parseInt(parts[2], 10) || 0;
-						var ff = parseInt(parts[3], 10) || 0;
-						var wholeFps = Math.max(1, Math.round(fps));
-						var totalFrames = ((hh * 3600) + (mm * 60) + ss) * wholeFps + ff;
-						totalFrames += (dir === 'rev') ? -1 : 1;
-						if (totalFrames < 0){ totalFrames = 0; }
-						var framesOnly = totalFrames % wholeFps;
-						var totalSeconds = Math.floor(totalFrames / wholeFps);
-						var secOnly = totalSeconds % 60;
-						var minOnly = Math.floor(totalSeconds / 60) % 60;
-						var hrOnly = Math.floor(totalSeconds / 3600);
-						el.textContent = pad(hrOnly, 2) + ':' + pad(minOnly, 2) + ':' + pad(secOnly, 2) + ':' + pad(framesOnly, 2);
-					}, intervalMs);
-				})(tcEls[i]);
+					var wholeFps = Math.max(1, Math.round(fps));
+					var carry = (hdcpTcCarry.get(el) || 0) + (elapsedMs / 1000) * fps;
+					var framesToAdd = Math.floor(carry);
+					if (framesToAdd <= 0){ hdcpTcCarry.set(el, carry); continue; }
+					hdcpTcCarry.set(el, carry - framesToAdd);
+					var parts = el.textContent.split(':');
+					if (parts.length !== 4){ continue; }
+					var hh = parseInt(parts[0], 10) || 0;
+					var mm = parseInt(parts[1], 10) || 0;
+					var ss = parseInt(parts[2], 10) || 0;
+					var ff = parseInt(parts[3], 10) || 0;
+					var totalFrames = ((hh * 3600) + (mm * 60) + ss) * wholeFps + ff;
+					totalFrames += (dir === 'rev') ? -framesToAdd : framesToAdd;
+					if (totalFrames < 0){ totalFrames = 0; }
+					var framesOnly = totalFrames % wholeFps;
+					var totalSeconds = Math.floor(totalFrames / wholeFps);
+					var secOnly = totalSeconds % 60;
+					var minOnly = Math.floor(totalSeconds / 60) % 60;
+					var hrOnly = Math.floor(totalSeconds / 3600);
+					el.textContent = pad(hrOnly, 2) + ':' + pad(minOnly, 2) + ':' + pad(secOnly, 2) + ':' + pad(framesOnly, 2);
+				}
 			}
 
 			setInterval(tickRemaining, 1000);
+			setInterval(tickTc, 40);
+
+			//---------------------------------------------------------------
+			//Live status: poll deck_status.php and patch each deck row in
+			//place - connection dot, transport pill, timecode, slot line,
+			//and which transport button is highlighted "active" - without
+			//a full page reload. This never touches the Timecode Jump
+			//field (that's on the Info panel now), the File Naming fields,
+			//or the sync toggle, and it never submits or navigates
+			//anything, so there's nothing a page reload could interrupt.
+			//---------------------------------------------------------------
+			var HDCP_POLL_MS = 4000;
+			var HDCP_BTN_ACTIVE_WHEN = {
+				rw: 'rewind', play: 'play', ff: 'forward', rec: 'record'
+			};
+
+			function hdcpButtonActive(btn, output){
+				if (btn === 'stop'){ return output === 'preview' || output === 'stopped'; }
+				return HDCP_BTN_ACTIVE_WHEN[btn] === output;
+			}
+
+			function applySnapshot(deckNum, snap){
+				var row = document.querySelector('[data-hdcp-deck="' + deckNum + '"]');
+				if ( ! row ){ return; } //deck added/removed from config.txt since load - full reload picks that up
+
+				var connDot = row.querySelector('[data-hdcp-conn-dot]');
+				if (connDot){
+					connDot.className = snap.online ? 'conntrue' : 'connfalse';
+					connDot.title = snap.online ? 'Deck is online' : 'Deck is not connected';
+				}
+				var ipStatus = row.querySelector('[data-hdcp-ip-status]');
+				if (ipStatus){ ipStatus.style.color = snap.online ? '#45D40C' : 'red'; }
+				var ipError = row.querySelector('[data-hdcp-ip-error]');
+				if (ipError){ ipError.style.display = snap.online ? 'none' : ''; }
+
+				var pillWrap = row.querySelector('[data-hdcp-status-pill-wrap]');
+				var slotBlock = row.querySelector('[data-hdcp-status-slot-block]');
+				var emptyBlock = row.querySelector('[data-hdcp-status-empty]');
+				var hasTc = snap.online && !!snap.tc;
+				var hasSlot = snap.online && snap.slotId !== null && snap.slotId !== undefined;
+
+				if (pillWrap){
+					pillWrap.style.display = hasTc ? '' : 'none';
+					if (hasTc){
+						var pill = pillWrap.querySelector('[data-hdcp-status-pill]');
+						if (pill){
+							pill.className = 'pill pill-small pill-' + snap.transportClass;
+							pill.textContent = snap.outputLabel ? snap.outputLabel : 'unknown';
+						}
+						var tcEl = pillWrap.querySelector('[data-hdcp-status-tc]');
+						if (tcEl){
+							tcEl.textContent = snap.tc;
+							tcEl.setAttribute('data-hdcp-dir', snap.tcDir || '');
+							tcEl.setAttribute('data-hdcp-fps', snap.fps || 30);
+						}
+					}
+				}
+				if (slotBlock){
+					slotBlock.style.display = hasSlot ? '' : 'none';
+					if (hasSlot){
+						var slotPill = slotBlock.querySelector('[data-hdcp-status-slot-pill]');
+						if (slotPill){
+							slotPill.className = 'pill pill-small pill-' + snap.slotTimeClass;
+							if (snap.slotTotalGb){ slotPill.title = 'Total capacity: ' + snap.slotTotalGb; }else{ slotPill.removeAttribute('title'); }
+						}
+						var slotIdEl = slotBlock.querySelector('[data-hdcp-status-slot-id]');
+						if (slotIdEl){ slotIdEl.textContent = snap.slotId; }
+						var remainEl = slotBlock.querySelector('[data-hdcp-live-remain]');
+						if (remainEl){
+							remainEl.textContent = snap.slotRemainTc || '00:00:00';
+							if (snap.recording && snap.slotRemain !== null && snap.slotRemain !== undefined){
+								remainEl.setAttribute('data-hdcp-seconds', snap.slotRemain);
+							}else{
+								remainEl.removeAttribute('data-hdcp-seconds');
+							}
+						}
+					}
+				}
+				if (emptyBlock){ emptyBlock.style.display = ( ! hasTc && ! hasSlot ) ? '' : 'none'; }
+
+				var btnEls = row.querySelectorAll('[data-hdcp-btn]');
+				for (var i = 0; i < btnEls.length; i++){
+					var btnEl = btnEls[i];
+					var btn = btnEl.getAttribute('data-hdcp-btn');
+					var isActive = snap.online && hdcpButtonActive(btn, snap.output);
+					var base = (btn === 'rec') ? 'hdcpButtonRec rec' : 'hdcpButton ' + btn;
+					btnEl.className = base + (isActive ? 'active' : '');
+				}
+			}
+
+			function poll(){
+				fetch('deck_status.php', {cache: 'no-store'}).then(function(resp){
+					if ( ! resp.ok ){ throw new Error('bad status ' + resp.status); }
+					return resp.json();
+				}).then(function(data){
+					for (var deckNum in data){
+						if (Object.prototype.hasOwnProperty.call(data, deckNum)){
+							applySnapshot(deckNum, data[deckNum]);
+						}
+					}
+				}).catch(function(){
+					//Quietly skip this cycle - the next poll (or the next real
+					//page load/button press) will catch up, same as any other
+					//transient network blip.
+				});
+			}
+
+			setInterval(poll, HDCP_POLL_MS);
+			poll();
 		})();
 		</script>
 	</body>
