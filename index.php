@@ -155,7 +155,7 @@
 						if( isset( $deck['enable'] ) && $deck['enable'] == "true"){
 			?>
 							<div name="deck<?php echo $deck['number']; ?>" class="hdcpDeck hdcpDeckBorderlt hdcpDeckTall">
-								<div class="hdcpDblBox left" style="line-height: 37px; height:146px;">
+								<div class="hdcpDblBox left" style="line-height: 37px; height:172px;">
 									<div name="deckname" class="deckname medium">
 										<?php echo $deck['name']; ?>
 									</div>
@@ -213,21 +213,61 @@
 											${"transport_d".$deck['number']} = hdcp_query(${"hd".$deck['number']}, "transport info");
 											${"output_d".$deck['number']} = isset(${"transport_d".$deck['number']}['status']) ? ${"transport_d".$deck['number']}['status'] : '';
 											${"tc_d".$deck['number']} = isset(${"transport_d".$deck['number']}['display timecode']) ? ${"transport_d".$deck['number']}['display timecode'] : null;
+											//-----------------------------------------------------------
+											//Active slot + remaining time/capacity on its media, so it's
+											//visible right here instead of needing a trip to the Info
+											//panel. "transport info" already told us which slot is
+											//active; only spend a second round trip asking that slot
+											//for its remaining time when there's actually a slot to ask
+											//about, same "don't query a deck for nothing" rule the rest
+											//of this loop already follows.
+											//-----------------------------------------------------------
+											${"slotid_d".$deck['number']} = null;
+											${"slotremain_d".$deck['number']} = null;
+											${"slottotal_d".$deck['number']} = null;
+											$hdcpActiveSlot = isset(${"transport_d".$deck['number']}['slot id']) ? ${"transport_d".$deck['number']}['slot id'] : '';
+											if ($hdcpActiveSlot !== '' && $hdcpActiveSlot !== 'none'){
+												$hdcpSlotInfo = hdcp_query(${"hd".$deck['number']}, "slot info: slot id: ".$hdcpActiveSlot);
+												if (isset($hdcpSlotInfo['status']) && $hdcpSlotInfo['status'] !== 'empty'){
+													${"slotid_d".$deck['number']} = $hdcpActiveSlot;
+													${"slotremain_d".$deck['number']} = isset($hdcpSlotInfo['recording time']) ? intval($hdcpSlotInfo['recording time']) : null;
+													${"slottotal_d".$deck['number']} = isset($hdcpSlotInfo['total size']) ? floatval($hdcpSlotInfo['total size']) : null;
+												}
+											}
 										}else{
 											${"output_d".$deck['number']} = '';
 											${"tc_d".$deck['number']} = null;
+											${"slotid_d".$deck['number']} = null;
+											${"slotremain_d".$deck['number']} = null;
+											${"slottotal_d".$deck['number']} = null;
 										}
 										//fclose(${"hd".$deck['number']});
 									?>
 									</div>
-									<?php if ( ${"tc_d".$deck['number']} ){ ?>
+									<?php if ( ${"tc_d".$deck['number']} ){
+										//Which way (if any) this deck's timecode is currently moving, so
+										//the client-side ticker below can keep the on-screen number live
+										//between page loads instead of it just sitting frozen at whatever
+										//it read on the last request.
+										$hdcpTcDir = '';
+										if (${"output_d".$deck['number']} == 'record' || ${"output_d".$deck['number']} == 'play' || ${"output_d".$deck['number']} == 'forward'){
+											$hdcpTcDir = 'fwd';
+										}elseif (${"output_d".$deck['number']} == 'rewind'){
+											$hdcpTcDir = 'rev';
+										}
+										$hdcpTcFps = isset(${"transport_d".$deck['number']}['video format']) ? hdcp_fps_from_format(${"transport_d".$deck['number']}['video format']) : 30;
+									?>
 									<div class="deckTc">
 										<span class="pill pill-small pill-<?php echo hdcp_transport_class(${"output_d".$deck['number']}); ?>" style="margin-right:8px;"><?php echo ${"output_d".$deck['number']} == 'record' ? 'REC' : htmlspecialchars(${"output_d".$deck['number']}); ?></span>
-										<span class="tcDisplay tcDisplaySmall"><?php echo htmlspecialchars(${"tc_d".$deck['number']}); ?></span>
+										<span class="tcDisplay tcDisplaySmall" data-hdcp-live-tc<?php echo $hdcpTcDir ? ' data-hdcp-dir="'.$hdcpTcDir.'" data-hdcp-fps="'.htmlspecialchars($hdcpTcFps).'"' : ''; ?>><?php echo htmlspecialchars(${"tc_d".$deck['number']}); ?></span>
 									</div>
 									<?php } ?>
-								</div>
-								<div class="hdcpDblBox left" style="height:146px;">
+									<?php if ( ${"slotid_d".$deck['number']} !== null ){ ?>
+									<div class="deckSlot">
+										<span class="pill pill-small pill-<?php echo hdcp_time_class(${"slotremain_d".$deck['number']}); ?>">Slot <?php echo htmlspecialchars(${"slotid_d".$deck['number']}); ?> &middot; <span data-hdcp-live-remain<?php echo (${"output_d".$deck['number']} == 'record' && ${"slotremain_d".$deck['number']} !== null) ? ' data-hdcp-seconds="'.intval(${"slotremain_d".$deck['number']}).'"' : ''; ?>><?php echo hdcp_seconds_to_tc(${"slotremain_d".$deck['number']}); ?></span> left<?php echo ${"slottotal_d".$deck['number']} !== null ? ' of '.hdcp_bytes_to_gb(${"slottotal_d".$deck['number']}) : ''; ?></span>
+									</div>
+									<?php } ?>
+								<div class="hdcpDblBox left" style="height:172px;">
 									<div class="hdcpBoxBborder" style="line-height: 26px;margin-top:2px;">
 										Timecode Jump:
 									</div>
@@ -249,42 +289,42 @@
 										<div class="remote"></div>
 									</a>
 								</div>
-								<div class="hdcpBox left" style="height:146px;">
+								<div class="hdcpBox left" style="height:172px;">
 									<a href="?deck=<?php echo $deck['number']; ?>&cmd=trkbk" title="Previous clip">
 										<div class="hdcpButton trkbk"></div>
 									</a>
 								</div>
-								<div class="hdcpBox left" style="height:146px;">
+								<div class="hdcpBox left" style="height:172px;">
 									<a href="?deck=<?php echo $deck['number']; ?>&cmd=rw" title="Rewind">
 										<div class="hdcpButton rw<?php if(${"output_d".$deck['number']} == "rewind"){ echo "active";} ?>"></div>
 									</a>
 								</div>
-								<div class="hdcpBox left" style="height:146px;">
+								<div class="hdcpBox left" style="height:172px;">
 									<a href="?deck=<?php echo $deck['number']; ?>&cmd=play" title="Play">
 										<div class="hdcpButton play<?php if(${"output_d".$deck['number']} == "play"){ echo "active";} ?>"></div>
 									</a>
 								</div>
-								<div class="hdcpBox left" style="height:146px;">
+								<div class="hdcpBox left" style="height:172px;">
 									<a href="?deck=<?php echo $deck['number']; ?>&cmd=ff" title="Fast Forward">
 										<div class="hdcpButton ff<?php if(${"output_d".$deck['number']} == "forward"){ echo "active";} ?>"></div>
 									</a>
 								</div>
-								<div class="hdcpBox left" style="height:146px;">
+								<div class="hdcpBox left" style="height:172px;">
 									<a href="?deck=<?php echo $deck['number']; ?>&cmd=trkfw" title="Next clip">
 										<div class="hdcpButton trkfw"></div>
 									</a>
 								</div>
-								<div class="hdcpBox left" style="height:146px;">
+								<div class="hdcpBox left" style="height:172px;">
 									<a href="?deck=<?php echo $deck['number']; ?>&cmd=stop" title="Stop">
 										<div class="hdcpButton stop<?php if(${"output_d".$deck['number']} == "preview" || ${"output_d".$deck['number']} == "stopped"){ echo "active";} ?>"></div>
 									</a>
 								</div>
-								<div class="hdcpBox left hdcpBoxRborder" style="height:146px;">
+								<div class="hdcpBox left hdcpBoxRborder" style="height:172px;">
 									<a href="?deck=<?php echo $deck['number']; ?>&cmd=rec" title="Record">
 										<div class="hdcpButtonRec rec<?php if(${"output_d".$deck['number']} == "record"){ echo "active";} ?>"></div>
 									</a>
 								</div>
-								<div class="hdcpBox left" style="height:146px;">
+								<div class="hdcpBox left" style="height:172px;">
 									<a href="?deck=<?php echo $deck['number']; ?>&cmd=loop" title="Loop play">
 										<div class="hdcpButton loop"></div>
 									</a>
@@ -295,10 +335,72 @@
 					}
 				}
 			?>
-			<!--FOOTER START-->  
+			<!--FOOTER START-->
 			<?php include_once('footer.php'); ?>
 			<!--FOOTER END-->
 			</div>
 		</div>
+		<script>
+		// Purely cosmetic client-side ticker: keeps the timecode and
+		// remaining-record-time numbers rolling over between real page
+		// loads, so the panel doesn't look frozen for the ~seconds
+		// between refreshes. It never talks back to the decks - every
+		// button press or page load re-syncs these to the real values
+		// read from hardware, so any drift here is harmless and short-lived.
+		(function(){
+			function pad(n, len){
+				n = String(Math.max(0, Math.floor(n)));
+				while (n.length < len){ n = '0' + n; }
+				return n;
+			}
+
+			function tickRemaining(){
+				var els = document.querySelectorAll('[data-hdcp-live-remain][data-hdcp-seconds]');
+				for (var i = 0; i < els.length; i++){
+					var el = els[i];
+					var secs = parseInt(el.getAttribute('data-hdcp-seconds'), 10);
+					if (isNaN(secs)){ continue; }
+					secs = Math.max(0, secs - 1);
+					el.setAttribute('data-hdcp-seconds', secs);
+					var hh = Math.floor(secs / 3600);
+					var mm = Math.floor(secs / 60) % 60;
+					var ss = secs % 60;
+					el.textContent = pad(hh, 2) + ':' + pad(mm, 2) + ':' + pad(ss, 2);
+				}
+			}
+
+			// Timecode elements can each be running at a different frame
+			// rate, so give each one its own interval timed to 1000/fps
+			// instead of forcing every deck onto a single shared tick.
+			var tcEls = document.querySelectorAll('[data-hdcp-live-tc][data-hdcp-dir]');
+			for (var i = 0; i < tcEls.length; i++){
+				(function(el){
+					var fps = parseFloat(el.getAttribute('data-hdcp-fps')) || 30;
+					var intervalMs = 1000 / fps;
+					setInterval(function(){
+						var dir = el.getAttribute('data-hdcp-dir');
+						var parts = el.textContent.split(':');
+						if (parts.length !== 4){ return; }
+						var hh = parseInt(parts[0], 10) || 0;
+						var mm = parseInt(parts[1], 10) || 0;
+						var ss = parseInt(parts[2], 10) || 0;
+						var ff = parseInt(parts[3], 10) || 0;
+						var wholeFps = Math.max(1, Math.round(fps));
+						var totalFrames = ((hh * 3600) + (mm * 60) + ss) * wholeFps + ff;
+						totalFrames += (dir === 'rev') ? -1 : 1;
+						if (totalFrames < 0){ totalFrames = 0; }
+						var framesOnly = totalFrames % wholeFps;
+						var totalSeconds = Math.floor(totalFrames / wholeFps);
+						var secOnly = totalSeconds % 60;
+						var minOnly = Math.floor(totalSeconds / 60) % 60;
+						var hrOnly = Math.floor(totalSeconds / 3600);
+						el.textContent = pad(hrOnly, 2) + ':' + pad(minOnly, 2) + ':' + pad(secOnly, 2) + ':' + pad(framesOnly, 2);
+					}, intervalMs);
+				})(tcEls[i]);
+			}
+
+			setInterval(tickRemaining, 1000);
+		})();
+		</script>
 	</body>
 </html>
