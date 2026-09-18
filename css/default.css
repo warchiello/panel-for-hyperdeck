@@ -520,12 +520,12 @@ background-position: 0px 0px;
     height:172px;
 }
 
-/* The first column on a tall deck row also carries the live timecode
-   and active-slot/remaining-time lines now, and "STOPPED 00:00:00:00"
-   or "SLOT 1 · 00:00:00 LEFT OF 999GB" don't fit in the standard
-   160px .hdcpDblBox - widen just this column (the .hdcpDeck/.hdcpInterface
-   widths below are bumped by the same 70px so nothing else has to
-   shrink or wrap). */
+/* The column that used to hold the Timecode Jump box now carries the
+   live timecode and active-slot/remaining-time lines instead, and
+   "STOPPED 00:00:00:00" or "SLOT 1 · 00:00:00 LEFT OF 999GB" don't fit
+   in the standard 160px .hdcpDblBox - widen just this column (the
+   .hdcpDeck/.hdcpInterface widths below are bumped by the same 70px so
+   nothing else has to shrink or wrap). */
 .hdcpDblBox.deckInfoBox{
     width:230px;
 }
