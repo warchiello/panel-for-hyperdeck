@@ -267,6 +267,7 @@
 										<span class="pill pill-small pill-<?php echo hdcp_time_class(${"slotremain_d".$deck['number']}); ?>">Slot <?php echo htmlspecialchars(${"slotid_d".$deck['number']}); ?> &middot; <span data-hdcp-live-remain<?php echo (${"output_d".$deck['number']} == 'record' && ${"slotremain_d".$deck['number']} !== null) ? ' data-hdcp-seconds="'.intval(${"slotremain_d".$deck['number']}).'"' : ''; ?>><?php echo hdcp_seconds_to_tc(${"slotremain_d".$deck['number']}); ?></span> left<?php echo ${"slottotal_d".$deck['number']} !== null ? ' of '.hdcp_bytes_to_gb(${"slottotal_d".$deck['number']}) : ''; ?></span>
 									</div>
 									<?php } ?>
+									</div>
 								<div class="hdcpDblBox left" style="height:172px;">
 									<div class="hdcpBoxBborder" style="line-height: 26px;margin-top:2px;">
 										Timecode Jump:
