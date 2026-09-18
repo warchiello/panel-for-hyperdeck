@@ -9,7 +9,7 @@ if(isset($_GET['rfr'])){$refresh = $_GET['rfr'];}else{$refresh = "60";}header("R
 		<meta name="viewport" content="width=1200, user-scalable=0">
 		<meta name="apple-mobile-web-app-status-bar-style" content="default">
 		<link rel="apple-touch-icon" href="images/hdcpIcon.png">
-		<title>HyperDeck Device Info</title>
+		<title>VMPDeck Device Info</title>
 		<link rel="stylesheet" type="text/css" href="css/default.css" media="screen" />
 		<link rel="icon" type="image/png" href="images/hdcpIcon.png">
 		<link rel="stylesheet" href="assets/css/font-awesome.min.css">
@@ -21,7 +21,7 @@ if(isset($_GET['rfr'])){$refresh = $_GET['rfr'];}else{$refresh = "60";}header("R
 				<a href="" onclick="location.reload();">
 					<?php if($enable_avatar == "true"){ echo '<img class="avatar left" src="'.$avatar.'">';} ?>
 					<div class="left large" style="overflow:hidden; width:500px;height:52px;">
-						<span class="bold large">HyperDeck </span><?php  echo (isset($dname)&&!empty($dname)) ? $dname : ''; ?> Info
+						<span class="bold large">VMPDeck </span><?php  echo (isset($dname)&&!empty($dname)) ? $dname : ''; ?> Info
 					</div>
 				</a>
 				<?php
