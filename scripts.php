@@ -109,28 +109,6 @@ if ( ! function_exists('hdcp_transport_class') ) {
 		}
 	}
 }
-if ( ! function_exists('hdcp_model_label') ) {
-	//Short badge text for each deck model, shown on its panel so decks of
-	//different hardware are easy to tell apart at a glance.
-	function hdcp_model_label($model){
-		switch($model){
-			case 'mini':   return 'MINI';
-			case 'studio': return 'STUDIO';
-			case '12g':    return '12G';
-			case 'pro':    return 'PRO';
-			default:       return strtoupper((string)$model);
-		}
-	}
-}
-if ( ! function_exists('hdcp_model_class') ) {
-	//CSS class suffix for a deck's model-specific skin. Falls back to a
-	//neutral skin for any value that isn't one of settings.php's options
-	//(a config edited by hand, an older config, etc.).
-	function hdcp_model_class($model){
-		$known = array('mini', 'studio', '12g', 'pro');
-		return in_array($model, $known, true) ? $model : 'default';
-	}
-}
 
 //DECK COMMANDS
 $play = "remote: enable: true\r\n play\r\n";					//sends command to play deck
