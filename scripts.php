@@ -109,6 +109,25 @@ if ( ! function_exists('hdcp_transport_class') ) {
 		}
 	}
 }
+if ( ! function_exists('hdcp_fps_from_format') ) {
+	//Best-effort frame rate guess from a HyperDeck video-format string like
+	//"1080p2997" or "720p50", used only to keep the main panel's live
+	//timecode ticker (pure client-side, between real page loads) rolling
+	//over at roughly the right rate. It's cosmetic - every button press or
+	//refresh re-syncs to the deck's actual timecode - so an approximation
+	//for an unrecognised suffix is fine.
+	function hdcp_fps_from_format($format){
+		if ( ! preg_match('/(\d+)$/', (string)$format, $m) ) { return 30; }
+		$known = array(
+			2398 => 23.98, 2400 => 24, 2500 => 25, 2997 => 29.97, 3000 => 30,
+			5000 => 50, 5994 => 59.94, 6000 => 60,
+		);
+		$suffix = intval($m[1]);
+		if (isset($known[$suffix])){ return $known[$suffix]; }
+		if ($suffix >= 1 && $suffix <= 120){ return $suffix; } //plain integer rate, e.g. the "50" in "720p50"
+		return 30;
+	}
+}
 
 //DECK COMMANDS
 $play = "remote: enable: true\r\n play\r\n";					//sends command to play deck
