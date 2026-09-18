@@ -119,6 +119,12 @@ if(isset($_GET['rfr'])){$refresh = $_GET['rfr'];}else{$refresh = "60";}header("R
 							<div class="statLabel">Slot</div>
 							<div class="statValue"><?php echo isset($transport['slot id']) ? htmlspecialchars($transport['slot id']) : '—'; ?></div>
 						</div>
+						<div class="statGroup">
+							<div class="statLabel">Timecode Jump</div>
+							<form action="?deck=<?php echo $_GET['deck']; ?>&cmd=tcj" method="post" class="tcform">
+								<input type="text" name="timecode<?php echo $_GET['deck']; ?>" value="<?php echo ${"deck".$_GET['deck']."tc"}; ?>" style="border: none;background-color: #444;border-radius: 4px;padding: 2px 2px 2px 6px;font-size: 16px;color:#e2e1dd;width:110px;">
+							</form>
+						</div>
 					</div>
 				</div>
 
