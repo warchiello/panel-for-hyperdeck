@@ -34,7 +34,7 @@
 		<meta name="viewport" content="width=1200, user-scalable=0">
 		<meta name="apple-mobile-web-app-status-bar-style" content="default">
 		<link rel="apple-touch-icon" href="images/hdcpIcon.png">
-		<title>HyperDeck Schedule Panel</title>
+		<title>VMPDeck Schedule Panel</title>
 		<link rel="stylesheet" type="text/css" href="css/default.css" media="screen" />
 		<link rel="icon" type="image/png" href="images/hdcpIcon.png">
 		<link rel="stylesheet" href="assets/css/font-awesome.min.css">
@@ -45,7 +45,7 @@
 			<div class="hdcpHeader">
 				<a href="scheduler.php">
 					<?php if($enable_avatar == "true"){ echo '<img class="avatar left" src="'.$avatar.'">';} ?>
-					<div class="left large"><span class="bold large">HyperDeck</span> Schedule Panel</div>
+					<div class="left large"><span class="bold large">VMPDeck</span> Schedule Panel</div>
 				</a>
 				<?php
 					if($enable_login == "true"){
