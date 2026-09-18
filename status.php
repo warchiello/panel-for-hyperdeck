@@ -40,6 +40,14 @@ if (is_numeric($refresh) && $refresh > 0){ header("Refresh:$refresh"); }
 				padding:20px 24px;
 				width:320px;
 				box-sizing:border-box;
+				display:block;
+				text-decoration:none;
+				color:inherit;
+				cursor:pointer;
+				transition:background-color 0.15s ease;
+			}
+			.statusCard:hover{
+				background-color:#3d3d3d;
 			}
 			/* The site-wide "*{background-color:rgb(33,33,33);}" rule in
 			   default.css would otherwise paint each of these plain divs
@@ -156,7 +164,7 @@ if (is_numeric($refresh) && $refresh > 0){ header("Refresh:$refresh"); }
 						$hdcpTcDir = 'rev';
 					}
 			?>
-				<div class="statusCard" data-hdcp-deck="<?php echo htmlspecialchars($deck['number']); ?>">
+				<a class="statusCard" href="devinfo.php?deck=<?php echo htmlspecialchars($deck['number']); ?>" data-hdcp-deck="<?php echo htmlspecialchars($deck['number']); ?>">
 					<div class="deckname"><?php echo htmlspecialchars($deck['name']); ?></div>
 					<div class="deckip"><?php echo htmlspecialchars($deck['ip']); ?></div>
 					<div class="statusOffline" data-hdcp-offline-block style="<?php echo $hdcpOnline ? 'display:none;' : ''; ?>">
@@ -169,11 +177,11 @@ if (is_numeric($refresh) && $refresh > 0){ header("Refresh:$refresh"); }
 							<span class="pill pill-small pill-<?php echo hdcp_time_class($hdcpSlotRemain); ?>" data-hdcp-status-slot-pill<?php echo $hdcpSlotTotal !== null ? ' title="Total capacity: '.htmlspecialchars(hdcp_bytes_to_gb($hdcpSlotTotal)).'"' : ''; ?>>Slot <span data-hdcp-status-slot-id><?php echo htmlspecialchars($hdcpSlotId); ?></span> &middot; <span data-hdcp-live-remain<?php echo ($hdcpOutput == 'record' && $hdcpSlotRemain !== null) ? ' data-hdcp-seconds="'.intval($hdcpSlotRemain).'"' : ''; ?>><?php echo hdcp_seconds_to_tc($hdcpSlotRemain); ?></span> left</span>
 						</div>
 					</div>
-				</div>
+				</a>
 			<?php
 				}
 				if ( ! $hdcpAnyDeck ){
-					echo '<div class="statusCard" style="width:100%;text-align:center;">No decks configured. <a href="settings.php">Add a deck</a>.</div>';
+					echo '<div class="statusCard" style="width:100%;text-align:center;cursor:default;">No decks configured. <a href="settings.php">Add a deck</a>.</div>';
 				}
 			?>
 			</div>
