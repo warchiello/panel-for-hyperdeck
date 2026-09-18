@@ -155,7 +155,7 @@
 						if( isset( $deck['enable'] ) && $deck['enable'] == "true"){
 			?>
 							<div name="deck<?php echo $deck['number']; ?>" class="hdcpDeck hdcpDeckBorderlt hdcpDeckTall">
-								<div class="hdcpDblBox left" style="line-height: 37px; height:172px;">
+								<div class="hdcpDblBox deckInfoBox left" style="line-height: 37px; height:172px;">
 									<div name="deckname" class="deckname medium">
 										<?php echo $deck['name']; ?>
 									</div>
@@ -264,7 +264,15 @@
 									<?php } ?>
 									<?php if ( ${"slotid_d".$deck['number']} !== null ){ ?>
 									<div class="deckSlot">
-										<span class="pill pill-small pill-<?php echo hdcp_time_class(${"slotremain_d".$deck['number']}); ?>">Slot <?php echo htmlspecialchars(${"slotid_d".$deck['number']}); ?> &middot; <span data-hdcp-live-remain<?php echo (${"output_d".$deck['number']} == 'record' && ${"slotremain_d".$deck['number']} !== null) ? ' data-hdcp-seconds="'.intval(${"slotremain_d".$deck['number']}).'"' : ''; ?>><?php echo hdcp_seconds_to_tc(${"slotremain_d".$deck['number']}); ?></span> left<?php echo ${"slottotal_d".$deck['number']} !== null ? ' of '.hdcp_bytes_to_gb(${"slottotal_d".$deck['number']}) : ''; ?></span>
+										<?php
+											//Total capacity is unbounded text (could be a handful of
+											//digits or a lot, depending on the media), so it goes in
+											//a hover tooltip instead of the always-visible pill text -
+											//keeps this column's width predictable instead of chasing
+											//whatever the longest possible "of X GB" string could be.
+											$hdcpSlotTitle = ${"slottotal_d".$deck['number']} !== null ? ' title="Total capacity: '.htmlspecialchars(hdcp_bytes_to_gb(${"slottotal_d".$deck['number']})).'"' : '';
+										?>
+										<span class="pill pill-small pill-<?php echo hdcp_time_class(${"slotremain_d".$deck['number']}); ?>"<?php echo $hdcpSlotTitle; ?>>Slot <?php echo htmlspecialchars(${"slotid_d".$deck['number']}); ?> &middot; <span data-hdcp-live-remain<?php echo (${"output_d".$deck['number']} == 'record' && ${"slotremain_d".$deck['number']} !== null) ? ' data-hdcp-seconds="'.intval(${"slotremain_d".$deck['number']}).'"' : ''; ?>><?php echo hdcp_seconds_to_tc(${"slotremain_d".$deck['number']}); ?></span> left</span>
 									</div>
 									<?php } ?>
 									</div>
