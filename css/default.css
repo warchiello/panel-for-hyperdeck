@@ -514,15 +514,24 @@ background-position: 0px 0px;
 }
 
 /* Deck rows on the main control panel get a little extra height to fit
-   the live timecode line without overflowing the fixed-height columns. */
+   the live timecode line and the active-slot/remaining-time line without
+   overflowing the fixed-height columns. */
 .hdcpDeckTall{
-    height:150px;
+    height:172px;
 }
 
 .deckTc{
     clear:left;
     line-height:20px;
     padding-top:2px;
+    white-space:nowrap;
+}
+
+.deckSlot{
+    clear:left;
+    line-height:20px;
+    padding-top:2px;
+    white-space:nowrap;
 }
 
 /* Combined selectors (rather than relying on source order) so these
