@@ -83,44 +83,35 @@
 							echo $noDeck;
 						}
 						//connect to deck
-						fwrite($bin, "slot info\r\n");
-						$diskCheck = '';
-						for ($x=0; $x<=5;){
-							$diskCheck .= fgets($bin);
-							$x++;
-						}
-						$slot = explode(" ", $diskCheck);
+						//---------------------------------------------------------------
+						//Read the deck's currently active slot, clip count, and clip
+						//list using the same robust "read until the blank line"
+						//parsing the info panel uses (hdcp_query), instead of the
+						//fixed-line-count reads this used to rely on - those assumed
+						//an exact number of response lines per deck model, which is
+						//fragile and breaks the moment a real deck's response shape
+						//doesn't match those hardcoded counts.
+						//---------------------------------------------------------------
+						$slotInfo = hdcp_query($bin, "slot info");
+						$slotStatus = isset($slotInfo['status']) ? $slotInfo['status'] : '';
 						//check if deck has a disk
-						if(preg_match('/105/', $diskCheck)){
+						if($slotStatus === '' || $slotStatus === 'empty' || (isset($slotInfo['__status']) && strpos($slotInfo['__status'], '105') === 0)){
 							echo "<span style='font-size:22px;'>Error: There are currently no disks in ".$currentDeck."</span>";
 						}else{
-							if($_GET['cmd'] == "gtc" || $_GET['cmd'] == "gtcp"){
-								$var = 2+$value3; //12 normal 9 mini
-							}else{
-								$var = $value3; //10 normal 7 mini
-							}
-							$clipKey = "clip count:";
-							fwrite($bin, $clipsCount);
-							for ($x=0; $x<=$var-1;){
-								$clipCount .= fgets($bin);
-								$x++;
-							}
-							$pos = strpos($clipCount, $clipKey);
-							$output = substr($clipCount, $pos+12);
+							$clipCountInfo = hdcp_query($bin, trim($clipsCount));
+							$output = isset($clipCountInfo['clip count']) ? intval($clipCountInfo['clip count']) : 0;
 							if($output == 0){
 								echo "<span style='font-size:22px;'>Notice: There are no clips on the selected disk in ".$currentDeck."</span>";
 							}else{
-								fwrite($bin, $clipsList);
-								for ($x=0; $x<=$output+2;){
-									$clipName = fgets($bin);
-									$x++;
-									if($x>3){
-										if($model == "mini"){
-											$dl = explode(" ", $clipName); 
-											echo "<li><a href='clipbin.php?deck=".$_GET['deck']."&cmd=".$cplink."&clip=". ($x-3) ."'>". substr($clipName,0,60) ."</a>...<a href='download.php?deck=".$_GET['deck']."&slot=".$slot[12]."&file=".$dl[1]."'><i class='fa fa-download fa-fw' style='color:#e2e1dd;background:transparent;float:right;line-height:40px;margin-right:10px;'></i></a></li>";
-										}else{
-											echo "<li><a href='clipbin.php?deck=".$_GET['deck']."&cmd=".$cplink."&clip=". ($x-3) ."'>". substr($clipName,0,60) ."</a>...</li>";
-										}
+								$clipsInfo = hdcp_query($bin, trim($clipsList));
+								for ($i = 1; $i <= $output; $i++){
+									if ( ! isset($clipsInfo[$i]) ) { continue; }
+									$clipName = trim($clipsInfo[$i]); //"{name} {start tc} {duration tc}"
+									if($model == "mini"){
+										$dl = explode(" ", $clipName);
+										echo "<li><a href='clipbin.php?deck=".$_GET['deck']."&cmd=".$cplink."&clip=". $i ."'>". substr($clipName,0,60) ."</a>...<a href='download.php?deck=".$_GET['deck']."&slot=".urlencode(isset($slotInfo['volume name']) ? $slotInfo['volume name'] : '')."&file=".urlencode($dl[0])."'><i class='fa fa-download fa-fw' style='color:#e2e1dd;background:transparent;float:right;line-height:40px;margin-right:10px;'></i></a></li>";
+									}else{
+										echo "<li><a href='clipbin.php?deck=".$_GET['deck']."&cmd=".$cplink."&clip=". $i ."'>". substr($clipName,0,60) ."</a>...</li>";
 									}
 								}
 							}
