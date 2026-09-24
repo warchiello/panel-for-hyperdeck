@@ -460,19 +460,16 @@ if ( isset( $_GET['cmd'] ) && isset( $go ) && gettype( $go ) == 'resource' ) {
 		$result = '';
 		fwrite($go, $prepToken);
 
-		//The deck's success reply is a genuine protocol oddity (also taken
-		//from the reference client above, which special-cases it): a normal
-		//single-line ack - "216 format ready", with NO trailing colon -
-		//immediately followed by a SECOND raw line that is nothing but the
-		//bare confirmation token itself. No "code:"/"ready id:" label, no
-		//blank-line terminator; whatever that second line's raw content is,
-		//is the token, verbatim. Any other single-line reply (e.g. "100
-		//syntax error", "101 unsupported parameter") means the deck refused
-		//the command outright, so there's nothing more to read - reading
-		//just the one status line and reacting to it (rather than looping on
-		//fgets() hoping for more data that a rejection will never send) is
-		//also what makes a bad command fail in under a second instead of
-		//hanging until the timeout.
+		//Confirmed against a real deck (via the diagnostic trail below): the
+		//success reply is an ordinary multi-line block - "216 format
+		//ready:" (WITH a trailing colon, same as every other multi-line
+		//response in this app), followed by one data line carrying the
+		//token, followed by the standard blank-line terminator. The
+		//surprise is that the token line has no "key: value" label at all -
+		//it's just the bare token by itself - so it's parsed as a label if
+		//one is present, or taken as-is if not. Any other single-line reply
+		//(e.g. "100 syntax error") means the deck refused the command
+		//outright.
 		$line1 = fgets($go);
 		if ( $line1 === false ){
 			$meta1 = stream_get_meta_data($go);
@@ -481,28 +478,31 @@ if ( isset( $_GET['cmd'] ) && isset( $go ) && gettype( $go ) == 'resource' ) {
 			$formatDebug[] = "line1: ".addcslashes($line1, "\r\n\t");
 		}
 		if ( $line1 !== false && preg_match('/^\s*216\b/', $line1) ){
-			if ( strpos(trim($line1), ':') !== false ){
-				//Defensive fallback only: if a firmware variant ever sends
-				//this as an ordinary multi-line block ("216 format ready:"
-				//followed by "field: value" lines and a blank-line
-				//terminator) instead of the bare token line documented
-				//above, handle that shape too rather than failing outright.
-				for ($x=0; $x<10; $x++){
-					$line = fgets($go);
-					if ($line === false || trim($line) === ''){ break; }
-					$formatDebug[] = "block line: ".addcslashes($line, "\r\n\t");
-					if ( preg_match('/^\s*(?:code|ready\s*id)\s*:\s*(.+)$/i', $line, $tokenMatch) ){
-						$token = trim($tokenMatch[1]);
-						break;
-					}
+			//Read the rest of this response block - the token line, then
+			//whatever else until the blank-line terminator - so the socket
+			//is left clean for the confirm exchange that follows.
+			for ($x=0; $x<10; $x++){
+				$line = fgets($go);
+				if ($line === false){
+					$formatDebug[] = "block line: (no data)";
+					break;
 				}
-			}else{
-				$line2 = fgets($go);
-				if ( $line2 === false ){
-					$formatDebug[] = "line2: (no data)";
-				}else{
-					$formatDebug[] = "line2 (token): ".addcslashes($line2, "\r\n\t");
-					$token = trim($line2);
+				$trimmedLine = trim($line);
+				if ($trimmedLine === ''){
+					$formatDebug[] = "block line: (blank - end of block)";
+					break; //standard blank-line terminator
+				}
+				$formatDebug[] = "block line: ".addcslashes($line, "\r\n\t");
+				if ( $token === '' ){
+					//First non-blank line after the header carries the
+					//token - either bare, or (defensively) as a labelled
+					//"code:"/"ready id:" field if some firmware sends it
+					//that way.
+					if ( preg_match('/^\s*(?:code|ready\s*id)\s*:\s*(.+)$/i', $trimmedLine, $tokenMatch) ){
+						$token = trim($tokenMatch[1]);
+					}else{
+						$token = $trimmedLine;
+					}
 				}
 			}
 		}
