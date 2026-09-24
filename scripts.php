@@ -424,59 +424,80 @@ if ( isset( $_GET['cmd'] ) && isset( $go ) && gettype( $go ) == 'resource' ) {
 		//Target a specific card/slot when one was chosen; otherwise fall back
 		//to the deck's currently active slot (the original behaviour)
 		$fmtSlotId = ( isset($_GET['slotid']) && $_GET['slotid'] !== '' ) ? intval($_GET['slotid']) : null;
-		$prepToken = "format: ".( $fmtSlotId ? "slot id: ".$fmtSlotId." " : "" )."prepare: ".$fmt."\r\n";
+
+		//"format" has to be sent as a multi-line "parameterized" command
+		//block - a bare "format:" line, one "key: value" line per parameter,
+		//then a blank line - NOT as a single inline line like
+		//"format: slot id: 1 prepare: exFAT". The deck was silently
+		//rejecting the inline form outright (protocol error code 163 is
+		//literally "parameterized single line command not supported"),
+		//which is why it never showed any activity at all: it was never
+		//actually receiving a command it understood. Confirmed against
+		//Blackmagic's own open-source client library
+		//(github.com/Sofie-Automation/sofie-hyperdeck-connection), which
+		//always builds "format" this way.
+		$prepToken = "format:\r\nprepare: ".$fmt."\r\n";
+		if ( $fmtSlotId ){ $prepToken .= "slot id: ".$fmtSlotId."\r\n"; }
+		$prepToken .= "\r\n";
 
 		//Every read on this socket normally has a 1-second timeout (set once,
 		//up in DECK GLOBALS) so a deck that never speaks the protocol can't
 		//hang the page. That's far too short for formatting: preparing and
 		//confirming a format is real work on real hardware and can easily
-		//take several seconds, so fgets() was timing out and returning false
-		//before the deck's "ready id:" line ever arrived - the confirm was
-		//then sent with an empty/wrong token and always failed, even after
-		//fixing which "ready" occurrence gets parsed. Give this one exchange
-		//a much longer timeout, and restore the original one afterwards so
-		//nothing else on the socket is affected.
+		//take several seconds. Give this one exchange a much longer timeout,
+		//and restore the original one afterwards so nothing else on the
+		//socket is affected.
 		stream_set_timeout($go, 20);
-		$getToken = '';
+		$token = '';
 		$result = '';
 		fwrite($go, $prepToken);
-		//Read until the deck's blank-line block terminator, a read timeout,
-		//or a sane cap on lines - whichever comes first - rather than a
-		//fixed number of fgets() calls, since the exact line count in a
-		//real reply isn't guaranteed.
-		for ($x=0; $x<20; $x++){
-			$line = fgets($go);
-			if ($line === false){ break; }
-			$getToken .= $line;
-			if (stripos($getToken, 'ready id:') !== false){ break; } //got the token, no need to keep reading
-			$meta = stream_get_meta_data($go);
-			if ( ! empty($meta['timed_out']) ){ break; }
+
+		//The deck's success reply is a genuine protocol oddity (also taken
+		//from the reference client above, which special-cases it): a normal
+		//single-line ack - "216 format ready", with NO trailing colon -
+		//immediately followed by a SECOND raw line that is nothing but the
+		//bare confirmation token itself. No "code:"/"ready id:" label, no
+		//blank-line terminator; whatever that second line's raw content is,
+		//is the token, verbatim. Any other single-line reply (e.g. "100
+		//syntax error", "101 unsupported parameter") means the deck refused
+		//the command outright, so there's nothing more to read - reading
+		//just the one status line and reacting to it (rather than looping on
+		//fgets() hoping for more data that a rejection will never send) is
+		//also what makes a bad command fail in under a second instead of
+		//hanging until the timeout.
+		$line1 = fgets($go);
+		if ( $line1 !== false && preg_match('/^\s*216\b/', $line1) ){
+			if ( strpos(trim($line1), ':') !== false ){
+				//Defensive fallback only: if a firmware variant ever sends
+				//this as an ordinary multi-line block ("216 format ready:"
+				//followed by "field: value" lines and a blank-line
+				//terminator) instead of the bare token line documented
+				//above, handle that shape too rather than failing outright.
+				for ($x=0; $x<10; $x++){
+					$line = fgets($go);
+					if ($line === false || trim($line) === ''){ break; }
+					if ( preg_match('/^\s*(?:code|ready\s*id)\s*:\s*(.+)$/i', $line, $tokenMatch) ){
+						$token = trim($tokenMatch[1]);
+						break;
+					}
+				}
+			}else{
+				$line2 = fgets($go);
+				if ( $line2 !== false ){ $token = trim($line2); }
+			}
 		}
-		//The deck's reply is two lines - "216 format ready" (the status line,
-		//which itself contains the word "ready") followed by "ready id: <hex>"
-		//(the line that actually carries the confirm token). Matching on the
-		//word "ready" alone grabbed the status line instead of the id line,
-		//so the token sent back on confirm was always wrong and the format
-		//always failed. Match "ready id:" specifically instead.
-		$token = '';
-		if ( preg_match('/ready\s*id:\s*([0-9a-fA-F]+)/i', $getToken, $tokenMatch) ){
-			$token = $tokenMatch[1];
-		}
+
 		if ( $token !== '' ){
-			$confirm = "format: confirm: ".$token."\r\n";
+			//"format: confirm: <token>" is likewise a multi-line block, not
+			//an inline line - see the note above prepare.
+			$confirm = "format:\r\nconfirm: ".$token."\r\n\r\n";
 			//The confirm's "200 ok" can also lag behind the deck actually
 			//starting/finishing the format, so give it the same generous
 			//timeout rather than the page-wide 1-second default.
 			stream_set_timeout($go, 20);
 			fwrite($go, $confirm);
-			for ($x=0; $x<10; $x++){
-				$line = fgets($go);
-				if ($line === false){ break; }
-				$result .= $line;
-				if (trim($line) !== ''){ break; } //first non-blank line carries the status code
-				$meta = stream_get_meta_data($go);
-				if ( ! empty($meta['timed_out']) ){ break; }
-			}
+			$result = fgets($go);
+			if ($result === false){ $result = ''; }
 		}
 		stream_set_timeout($go, 1); //restore the fast-fail timeout for the rest of the page
 		if ( $token !== '' && preg_match('/^\s*200\b/', $result) ){
