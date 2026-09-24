@@ -425,37 +425,35 @@ if ( isset( $_GET['cmd'] ) && isset( $go ) && gettype( $go ) == 'resource' ) {
 		//to the deck's currently active slot (the original behaviour)
 		$fmtSlotId = ( isset($_GET['slotid']) && $_GET['slotid'] !== '' ) ? intval($_GET['slotid']) : null;
 		$prepToken = "format: ".( $fmtSlotId ? "slot id: ".$fmtSlotId." " : "" )."prepare: ".$fmt."\r\n";
-		$key = "ready";
 		$getToken = '';
 		$result = '';
 		fwrite($go, $prepToken);
-		for ($x=0; $x<=5;){
-			$getToken .= fgets($go);
-				//echo $getToken."<br>";
-			$x++;
-			if ($x>=6){
-				$findToken = strpos($getToken, $key);
-				$tokenValue = substr($getToken, $findToken+8); 
-			}
+		for ($x=0; $x<=5; $x++){
+			$line = fgets($go);
+			if ($line === false){ break; }
+			$getToken .= $line;
 		}
-		$token = $tokenValue;
-		$sucesss = "200";
-			//echo $token;
+		//The deck's reply is two lines - "216 format ready" (the status line,
+		//which itself contains the word "ready") followed by "ready id: <hex>"
+		//(the line that actually carries the confirm token). Matching on the
+		//word "ready" alone grabbed the status line instead of the id line,
+		//so the token sent back on confirm was always wrong and the format
+		//always failed. Match "ready id:" specifically instead.
+		$token = '';
+		if ( preg_match('/ready\s*id:\s*([0-9a-fA-F]+)/i', $getToken, $tokenMatch) ){
+			$token = $tokenMatch[1];
+		}
 		$confirm = 	"format: confirm: ".$token."\r\n";
-			//echo $confirm;
 		fwrite($go, $confirm);
-		for ($x=0; $x<=1;){
-			$result .= fgets($go);
-				//echo $result."<br>";
-			$x++;
+		for ($x=0; $x<=1; $x++){
+			$line = fgets($go);
+			if ($line === false){ break; }
+			$result .= $line;
 		}
-		if($x>=1){
-			//echo substr($result, 2,3);
-			if(substr($result, 2,3) == "200"){
-				$complete = "completed";
-			}else{
-				$complete = "failed";
-			}
+		if ( $token !== '' && preg_match('/^\s*200\b/', $result) ){
+			$complete = "completed";
+		}else{
+			$complete = "failed";
 		}
 	}
 
