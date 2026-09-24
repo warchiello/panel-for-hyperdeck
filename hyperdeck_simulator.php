@@ -237,34 +237,45 @@ function handle_command($line, &$state, $fps){
 		return "200 ok\r\n";
 	}
 
-	//format: prepare - mirrors the real HyperDeck reply: a "216 format ready"
-	//status line, then a separate "ready id: <hex>" line carrying the token
-	//the client must echo back on "format: confirm:". The sleep()s below are
-	//deliberate: real hardware takes real time to prepare/complete a format,
-	//well past the 1-second timeout the app uses for everything else, so a
-	//test run against this simulator actually exercises that the client
-	//waits long enough instead of always getting an instant reply.
-	if (preg_match('/^format:(?:\s*slot id:\s*\d+)?\s*prepare:\s*(.+)$/', $line, $m)){
-		sleep(3);
-		return "216 format ready\r\nready id: 6f4a2b91\r\n\r\n\r\n\r\n";
-	}
-	//format: confirm - only accept the exact token we handed out above, so a
-	//test run genuinely exercises the client's token parsing instead of
-	//passing no matter what it sends.
-	if (preg_match('/^format:\s*confirm:\s*([0-9a-fA-F]+)\s*$/', $line, $m)){
-		sleep(2);
-		if (strcasecmp($m[1], '6f4a2b91') === 0){
-			return "200 ok\r\n";
-		}
-		return "108 internal error\r\n";
-	}
-
 	//uptime
 	if ($line === 'uptime'){
 		return block_response('209 uptime', array('uptime' => '00:12:34:00'));
 	}
 
 	//Unknown command - still ack it, so the app never hangs waiting on a reply.
+	return "200 ok\r\n";
+}
+
+//Handles a multi-line "parameterized" command block: a bare "<name>:" line,
+//one "key: value" line per parameter, then a blank line. The only such
+//block the app sends today is "format" (prepare / confirm) - the real deck
+//rejects it as a single inline line (protocol error 163, "parameterized
+//single line command not supported"), so the client always sends it this
+//way. See the app's scripts.php SSD Formatting block for the full story.
+function handle_block_command($block, &$state, $fps){
+	if ($block['name'] === 'format'){
+		if (isset($block['params']['prepare'])){
+			//Hand out a fresh one-time token that the matching "confirm"
+			//must echo back, so a test run genuinely exercises the client's
+			//token round-trip instead of passing no matter what it sends.
+			$state['formatToken'] = 'fmt-'.substr(md5(uniqid('', true)), 0, 8);
+			sleep(3); //see the timing note in the file header - real hardware isn't instant here
+			//Deliberately reproduces the real deck's reply shape: "216
+			//format ready" with NO trailing colon, then a second raw line
+			//that is nothing but the bare token - no field label, no
+			//blank-line terminator.
+			return "216 format ready\r\n".$state['formatToken']."\r\n";
+		}
+		if (isset($block['params']['confirm'])){
+			sleep(2); //see the timing note in the file header
+			if ( isset($state['formatToken']) && $block['params']['confirm'] === $state['formatToken'] ){
+				unset($state['formatToken']);
+				return "200 ok\r\n";
+			}
+			return "108 internal error\r\n";
+		}
+	}
+	//Unknown block command - still ack it.
 	return "200 ok\r\n";
 }
 
@@ -299,7 +310,7 @@ while (true){
 		if ($conn){
 			stream_set_blocking($conn, false);
 			$id = $nextId++;
-			$clients[$id] = array('socket' => $conn, 'buffer' => '', 'lastActive' => time());
+			$clients[$id] = array('socket' => $conn, 'buffer' => '', 'lastActive' => time(), 'block' => null);
 			fwrite($conn, "500 connection info:\r\nprotocol version: 1.11\r\nmodel: HyperDeck Studio Mini\r\n\r\n");
 			echo "[".date('H:i:s')."] deck connected (#$id)\n";
 		}
@@ -329,9 +340,36 @@ while (true){
 		while (($pos = strpos($clients[$id]['buffer'], "\r\n")) !== false){
 			$line = substr($clients[$id]['buffer'], 0, $pos);
 			$clients[$id]['buffer'] = substr($clients[$id]['buffer'], $pos + 2);
-			$resp = handle_command($line, $state, $fps);
+			$trimmed = trim($line);
+
+			if ($clients[$id]['block'] !== null){
+				//Accumulating a multi-line "parameterized" command block
+				//(started below) - a blank line ends it, anything else is
+				//another "key: value" parameter line.
+				if ($trimmed === ''){
+					$resp = handle_block_command($clients[$id]['block'], $state, $fps);
+					echo "[".date('H:i:s')."] #$id > ".$clients[$id]['block']['name'].": ".json_encode($clients[$id]['block']['params'])."\n";
+					$clients[$id]['block'] = null;
+					if ($resp !== ''){ $outbound .= $resp; }
+				}else{
+					$parts = explode(':', $trimmed, 2);
+					if (count($parts) === 2){
+						$clients[$id]['block']['params'][trim($parts[0])] = trim($parts[1]);
+					}
+				}
+				continue;
+			}
+
+			if (preg_match('/^([a-zA-Z][a-zA-Z ]*):$/', $trimmed, $blockMatch)){
+				//Start of a multi-line "parameterized" command block - the
+				//bare "<name>:" line with nothing else on it.
+				$clients[$id]['block'] = array('name' => $blockMatch[1], 'params' => array());
+				continue;
+			}
+
+			$resp = handle_command($trimmed, $state, $fps);
 			if ($resp !== ''){
-				echo "[".date('H:i:s')."] #$id > ".$line."\n";
+				echo "[".date('H:i:s')."] #$id > ".$trimmed."\n";
 				$outbound .= $resp;
 			}
 		}
