@@ -425,13 +425,32 @@ if ( isset( $_GET['cmd'] ) && isset( $go ) && gettype( $go ) == 'resource' ) {
 		//to the deck's currently active slot (the original behaviour)
 		$fmtSlotId = ( isset($_GET['slotid']) && $_GET['slotid'] !== '' ) ? intval($_GET['slotid']) : null;
 		$prepToken = "format: ".( $fmtSlotId ? "slot id: ".$fmtSlotId." " : "" )."prepare: ".$fmt."\r\n";
+
+		//Every read on this socket normally has a 1-second timeout (set once,
+		//up in DECK GLOBALS) so a deck that never speaks the protocol can't
+		//hang the page. That's far too short for formatting: preparing and
+		//confirming a format is real work on real hardware and can easily
+		//take several seconds, so fgets() was timing out and returning false
+		//before the deck's "ready id:" line ever arrived - the confirm was
+		//then sent with an empty/wrong token and always failed, even after
+		//fixing which "ready" occurrence gets parsed. Give this one exchange
+		//a much longer timeout, and restore the original one afterwards so
+		//nothing else on the socket is affected.
+		stream_set_timeout($go, 20);
 		$getToken = '';
 		$result = '';
 		fwrite($go, $prepToken);
-		for ($x=0; $x<=5; $x++){
+		//Read until the deck's blank-line block terminator, a read timeout,
+		//or a sane cap on lines - whichever comes first - rather than a
+		//fixed number of fgets() calls, since the exact line count in a
+		//real reply isn't guaranteed.
+		for ($x=0; $x<20; $x++){
 			$line = fgets($go);
 			if ($line === false){ break; }
 			$getToken .= $line;
+			if (stripos($getToken, 'ready id:') !== false){ break; } //got the token, no need to keep reading
+			$meta = stream_get_meta_data($go);
+			if ( ! empty($meta['timed_out']) ){ break; }
 		}
 		//The deck's reply is two lines - "216 format ready" (the status line,
 		//which itself contains the word "ready") followed by "ready id: <hex>"
@@ -443,13 +462,23 @@ if ( isset( $_GET['cmd'] ) && isset( $go ) && gettype( $go ) == 'resource' ) {
 		if ( preg_match('/ready\s*id:\s*([0-9a-fA-F]+)/i', $getToken, $tokenMatch) ){
 			$token = $tokenMatch[1];
 		}
-		$confirm = 	"format: confirm: ".$token."\r\n";
-		fwrite($go, $confirm);
-		for ($x=0; $x<=1; $x++){
-			$line = fgets($go);
-			if ($line === false){ break; }
-			$result .= $line;
+		if ( $token !== '' ){
+			$confirm = "format: confirm: ".$token."\r\n";
+			//The confirm's "200 ok" can also lag behind the deck actually
+			//starting/finishing the format, so give it the same generous
+			//timeout rather than the page-wide 1-second default.
+			stream_set_timeout($go, 20);
+			fwrite($go, $confirm);
+			for ($x=0; $x<10; $x++){
+				$line = fgets($go);
+				if ($line === false){ break; }
+				$result .= $line;
+				if (trim($line) !== ''){ break; } //first non-blank line carries the status code
+				$meta = stream_get_meta_data($go);
+				if ( ! empty($meta['timed_out']) ){ break; }
+			}
 		}
+		stream_set_timeout($go, 1); //restore the fast-fail timeout for the rest of the page
 		if ( $token !== '' && preg_match('/^\s*200\b/', $result) ){
 			$complete = "completed";
 		}else{
