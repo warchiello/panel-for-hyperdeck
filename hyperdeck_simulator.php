@@ -239,14 +239,20 @@ function handle_command($line, &$state, $fps){
 
 	//format: prepare - mirrors the real HyperDeck reply: a "216 format ready"
 	//status line, then a separate "ready id: <hex>" line carrying the token
-	//the client must echo back on "format: confirm:".
+	//the client must echo back on "format: confirm:". The sleep()s below are
+	//deliberate: real hardware takes real time to prepare/complete a format,
+	//well past the 1-second timeout the app uses for everything else, so a
+	//test run against this simulator actually exercises that the client
+	//waits long enough instead of always getting an instant reply.
 	if (preg_match('/^format:(?:\s*slot id:\s*\d+)?\s*prepare:\s*(.+)$/', $line, $m)){
+		sleep(3);
 		return "216 format ready\r\nready id: 6f4a2b91\r\n\r\n\r\n\r\n";
 	}
 	//format: confirm - only accept the exact token we handed out above, so a
 	//test run genuinely exercises the client's token parsing instead of
 	//passing no matter what it sends.
 	if (preg_match('/^format:\s*confirm:\s*([0-9a-fA-F]+)\s*$/', $line, $m)){
+		sleep(2);
 		if (strcasecmp($m[1], '6f4a2b91') === 0){
 			return "200 ok\r\n";
 		}
