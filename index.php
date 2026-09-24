@@ -389,12 +389,22 @@
 					var framesToAdd = Math.floor(carry);
 					if (framesToAdd <= 0){ hdcpTcCarry.set(el, carry); continue; }
 					hdcpTcCarry.set(el, carry - framesToAdd);
-					var parts = el.textContent.split(':');
-					if (parts.length !== 4){ continue; }
-					var hh = parseInt(parts[0], 10) || 0;
-					var mm = parseInt(parts[1], 10) || 0;
-					var ss = parseInt(parts[2], 10) || 0;
-					var ff = parseInt(parts[3], 10) || 0;
+					//Real decks report drop-frame timecode as HH:MM:SS;FF - a
+					//semicolon (not a colon) right before the frame count.
+					//A plain split(':') silently produces 3 parts instead of
+					//4 for that format and bails out below, which is why
+					//this ticker never advanced on real hardware even though
+					//it worked fine against the simulator's non-drop-frame
+					//"00:00:00:00" output. Match either separator and keep
+					//whichever one the deck is actually using when writing
+					//the number back out.
+					var tcMatch = el.textContent.match(/^(\d+):(\d+):(\d+)([:;])(\d+)$/);
+					if ( ! tcMatch ){ continue; }
+					var hh = parseInt(tcMatch[1], 10) || 0;
+					var mm = parseInt(tcMatch[2], 10) || 0;
+					var ss = parseInt(tcMatch[3], 10) || 0;
+					var frameSep = tcMatch[4];
+					var ff = parseInt(tcMatch[5], 10) || 0;
 					var totalFrames = ((hh * 3600) + (mm * 60) + ss) * wholeFps + ff;
 					totalFrames += (dir === 'rev') ? -framesToAdd : framesToAdd;
 					if (totalFrames < 0){ totalFrames = 0; }
@@ -403,7 +413,7 @@
 					var secOnly = totalSeconds % 60;
 					var minOnly = Math.floor(totalSeconds / 60) % 60;
 					var hrOnly = Math.floor(totalSeconds / 3600);
-					el.textContent = pad(hrOnly, 2) + ':' + pad(minOnly, 2) + ':' + pad(secOnly, 2) + ':' + pad(framesOnly, 2);
+					el.textContent = pad(hrOnly, 2) + ':' + pad(minOnly, 2) + ':' + pad(secOnly, 2) + frameSep + pad(framesOnly, 2);
 				}
 			}
 
