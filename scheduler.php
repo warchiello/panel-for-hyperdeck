@@ -1,6 +1,8 @@
 <?php require('scripts.php'); if($enable_login == "true"){require('_login.php');} header("Refresh:$interval"); ?>
 <?php
-	$schedule = unserialize(file_get_contents('schedule.txt'));
+	//trim() guards against a trailing newline/whitespace in schedule.txt
+	//causing the same "Extra data" unserialize warning config.php had.
+	$schedule = unserialize(trim(file_get_contents('schedule.txt')));
 	array_multisort($schedule);
 	if(@$_POST['function'] == "add"){
 		$schedule[] = array(
