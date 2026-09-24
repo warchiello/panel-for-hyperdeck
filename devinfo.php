@@ -190,7 +190,7 @@ if(isset($_GET['rfr'])){$refresh = $_GET['rfr'];}else{$refresh = "60";}header("R
 				<!--CONFIGURATION-->
 				<div class="hdcpDeck hdcpDeckBorderlt">
 					<div class="hdcpDblBox hdcpBoxRborder left" style="line-height: 37px;">
-						<div name="deckname" class="deckname medium">
+						<div name="deckname" class="deckname medium" style="font-size:19px;">
 							<br>Configuration
 						</div>
 					</div>
