@@ -260,11 +260,12 @@ function handle_block_command($block, &$state, $fps){
 			//token round-trip instead of passing no matter what it sends.
 			$state['formatToken'] = 'fmt-'.substr(md5(uniqid('', true)), 0, 8);
 			sleep(3); //see the timing note in the file header - real hardware isn't instant here
-			//Deliberately reproduces the real deck's reply shape: "216
-			//format ready" with NO trailing colon, then a second raw line
-			//that is nothing but the bare token - no field label, no
-			//blank-line terminator.
-			return "216 format ready\r\n".$state['formatToken']."\r\n";
+			//Confirmed against a real deck: an ordinary multi-line block -
+			//"216 format ready:" (WITH a trailing colon, like every other
+			//multi-line response), then one data line that is nothing but
+			//the bare token itself (no "code:"/"ready id:" label), then the
+			//standard blank-line terminator.
+			return "216 format ready:\r\n".$state['formatToken']."\r\n\r\n";
 		}
 		if (isset($block['params']['confirm'])){
 			sleep(2); //see the timing note in the file header
