@@ -2,8 +2,12 @@
 
 //HYPERDECK CONTROL PANEL CONFIG
       // Reading the config data
-      $configtxt = file_get_contents('config.txt'); 
-      $config = unserialize($configtxt);
+      $configtxt = file_get_contents('config.txt');
+      //trim() strips any trailing newline/whitespace (e.g. from the file
+      //shipped in the repo, or added by an editor/FTP client) so unserialize()
+      //doesn't see trailing bytes after the closing "}" and throw an
+      //"Extra data" warning on a fresh install.
+      $config = unserialize(trim($configtxt));
       //Globals
       $startkey = "status:";
       $endkey = "speed:";
