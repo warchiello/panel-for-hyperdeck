@@ -298,6 +298,13 @@
 					}elseif($_GET['cmd'] == "format"){
 						$fmtSlotLabel = ( isset($_GET['slotid']) && $_GET['slotid'] !== '' ) ? " slot ".$_GET['slotid']."'s" : " the active slot's";
 						echo $fmtSlotLabel." media formatted as ".$_GET['formatType']." has ". ( isset($complete) ? $complete : 'encountered an error' ) .".</div></div>";
+						//Temporary diagnostic trail - the exact bytes exchanged with the
+						//deck during this attempt, so a real-hardware failure can be
+						//debugged from what's actually on the wire. Safe to remove once
+						//formatting is confirmed working.
+						if ( isset($formatDebugText) && $formatDebugText !== '' ){
+							echo "<div class='hdcpDeck hdcpDeckBorderlt'><div class='reporting' style='font-family:monospace;font-size:12px;word-break:break-all;text-align:left;padding:10px;'>".htmlspecialchars($formatDebugText)."</div></div>";
+						}
 					}elseif($_GET['cmd'] == "startup"){
 						if($_GET['startupstate'] == "true"){$pos = "enabled";}else{$pos = "disabled";}
 						echo " play on startup state changed to ".$pos.".</div></div>";
