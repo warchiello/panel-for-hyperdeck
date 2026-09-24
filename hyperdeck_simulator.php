@@ -237,16 +237,20 @@ function handle_command($line, &$state, $fps){
 		return "200 ok\r\n";
 	}
 
-	//format: prepare - the app reads exactly 6 lines here looking for "ready", then
-	//echoes back whatever it found as the token on "format: confirm:". We don't
-	//validate that token, so any well-formed 6-line reply drives the flow through.
+	//format: prepare - mirrors the real HyperDeck reply: a "216 format ready"
+	//status line, then a separate "ready id: <hex>" line carrying the token
+	//the client must echo back on "format: confirm:".
 	if (preg_match('/^format:(?:\s*slot id:\s*\d+)?\s*prepare:\s*(.+)$/', $line, $m)){
-		return "216 format ready: 6f4a2b91\r\n\r\n\r\n\r\n\r\n\r\n";
+		return "216 format ready\r\nready id: 6f4a2b91\r\n\r\n\r\n\r\n";
 	}
-	//format: confirm - the app checks that the 3 characters at a fixed offset read
-	//"200", which this reply satisfies, then reports the format as completed.
-	if (preg_match('/^format:\s*confirm:/', $line)){
-		return "\r\n200 ok\r\n";
+	//format: confirm - only accept the exact token we handed out above, so a
+	//test run genuinely exercises the client's token parsing instead of
+	//passing no matter what it sends.
+	if (preg_match('/^format:\s*confirm:\s*([0-9a-fA-F]+)\s*$/', $line, $m)){
+		if (strcasecmp($m[1], '6f4a2b91') === 0){
+			return "200 ok\r\n";
+		}
+		return "108 internal error\r\n";
 	}
 
 	//uptime
