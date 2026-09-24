@@ -440,6 +440,14 @@ if ( isset( $_GET['cmd'] ) && isset( $go ) && gettype( $go ) == 'resource' ) {
 		if ( $fmtSlotId ){ $prepToken .= "slot id: ".$fmtSlotId."\r\n"; }
 		$prepToken .= "\r\n";
 
+		//Diagnostic trail shown on the Utility page after this runs, so a
+		//failure on real hardware can be debugged from the exact bytes the
+		//deck actually sent back, without needing server/log access. Every
+		//control character is escaped visibly (\r, \n, \t) so nothing here
+		//depends on how the browser renders raw CR/LF.
+		$formatDebug = array();
+		$formatDebug[] = "sent: ".addcslashes($prepToken, "\r\n\t");
+
 		//Every read on this socket normally has a 1-second timeout (set once,
 		//up in DECK GLOBALS) so a deck that never speaks the protocol can't
 		//hang the page. That's far too short for formatting: preparing and
@@ -466,6 +474,12 @@ if ( isset( $_GET['cmd'] ) && isset( $go ) && gettype( $go ) == 'resource' ) {
 		//also what makes a bad command fail in under a second instead of
 		//hanging until the timeout.
 		$line1 = fgets($go);
+		if ( $line1 === false ){
+			$meta1 = stream_get_meta_data($go);
+			$formatDebug[] = "line1: (no data - ".( ! empty($meta1['timed_out']) ? "read timed out" : "connection closed/eof" ).")";
+		}else{
+			$formatDebug[] = "line1: ".addcslashes($line1, "\r\n\t");
+		}
 		if ( $line1 !== false && preg_match('/^\s*216\b/', $line1) ){
 			if ( strpos(trim($line1), ':') !== false ){
 				//Defensive fallback only: if a firmware variant ever sends
@@ -476,6 +490,7 @@ if ( isset( $_GET['cmd'] ) && isset( $go ) && gettype( $go ) == 'resource' ) {
 				for ($x=0; $x<10; $x++){
 					$line = fgets($go);
 					if ($line === false || trim($line) === ''){ break; }
+					$formatDebug[] = "block line: ".addcslashes($line, "\r\n\t");
 					if ( preg_match('/^\s*(?:code|ready\s*id)\s*:\s*(.+)$/i', $line, $tokenMatch) ){
 						$token = trim($tokenMatch[1]);
 						break;
@@ -483,9 +498,15 @@ if ( isset( $_GET['cmd'] ) && isset( $go ) && gettype( $go ) == 'resource' ) {
 				}
 			}else{
 				$line2 = fgets($go);
-				if ( $line2 !== false ){ $token = trim($line2); }
+				if ( $line2 === false ){
+					$formatDebug[] = "line2: (no data)";
+				}else{
+					$formatDebug[] = "line2 (token): ".addcslashes($line2, "\r\n\t");
+					$token = trim($line2);
+				}
 			}
 		}
+		$formatDebug[] = "token parsed as: ".( $token !== '' ? "'".$token."'" : "(empty - no confirm sent)" );
 
 		if ( $token !== '' ){
 			//"format: confirm: <token>" is likewise a multi-line block, not
@@ -496,10 +517,18 @@ if ( isset( $_GET['cmd'] ) && isset( $go ) && gettype( $go ) == 'resource' ) {
 			//timeout rather than the page-wide 1-second default.
 			stream_set_timeout($go, 20);
 			fwrite($go, $confirm);
+			$formatDebug[] = "confirm sent: ".addcslashes($confirm, "\r\n\t");
 			$result = fgets($go);
-			if ($result === false){ $result = ''; }
+			if ($result === false){
+				$meta2 = stream_get_meta_data($go);
+				$formatDebug[] = "confirm reply: (no data - ".( ! empty($meta2['timed_out']) ? "read timed out" : "connection closed/eof" ).")";
+				$result = '';
+			}else{
+				$formatDebug[] = "confirm reply: ".addcslashes($result, "\r\n\t");
+			}
 		}
 		stream_set_timeout($go, 1); //restore the fast-fail timeout for the rest of the page
+		$formatDebugText = implode(' | ', $formatDebug);
 		if ( $token !== '' && preg_match('/^\s*200\b/', $result) ){
 			$complete = "completed";
 		}else{
